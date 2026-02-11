@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>WorkiFy — Керування робочим часом</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="container header__container">
+            <h1 class="logo">Worki<span>Fy</span></h1>
+            <nav class="nav">
+                <ul class="nav__list">
+                    <li><a href="#schedule">Графік</a></li>
+                    <li><a href="#calendar">Календар</a></li>
+                    <li><a href="#about">Про додаток</a></li>
+                </ul>
+            </nav>
+            <button class="btn btn--primary" id="openModal">Додати зміну</button>
+        </div>
+    </header>
+
+    <!-- SCHEDULE SECTION -->
+    <section id="schedule" class="schedule section">
+        <div class="container">
+            <h2 class="section__title">Актуальні графіки</h2>
+            <div class="schedule__cards">
+                <div class="card">
+                    <h3>Понеділок</h3>
+                    <p>09:00 — 17:00</p>
+                </div>
+                <div class="card">
+                    <h3>Вівторок</h3>
+                    <p>10:00 — 18:00</p>
+                </div>
+                <div class="card">
+                    <h3>Середа</h3>
+                    <p>09:00 — 17:00</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CALENDAR SECTION -->
+    <section id="calendar" class="calendar section">
+        <div class="container">
+            <h2 class="section__title">Ваш розклад</h2>
+            <input type="date" id="workDate" class="calendar__input" />
+            <div id="selectedDate" class="calendar__output">Оберіть дату</div>
+        </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="about section">
+        <div class="container">
+            <h2 class="section__title">Про WorkiFy</h2>
+            <p>
+                WorkiFy — ваш інтелектуальний простір для керування робочим часом.
+                Переглядайте графіки, плануйте зміни та контролюйте розклад.
+            </p>
+        </div>
+    </section>
+
+    <!-- MODAL -->
+    <div id="modal" class="modal hidden">
+        <div class="modal__content">
+            <h3>Нова зміна</h3>
+            <label>
+                Дата:
+                <input type="date" id="newDate" />
+            </label>
+            <label>
+                Початок:
+                <input type="time" id="startTime" />
+            </label>
+            <label>
+                Кінець:
+                <input type="time" id="endTime" />
+            </label>
+            <button class="btn btn--success" id="saveChange">Зберегти</button>
+            <button class="btn btn--danger" id="closeModal">Скасувати</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
