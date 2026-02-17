@@ -95,6 +95,9 @@
       <div class="nav-item" onclick="showPage('requests')">
         <span class="icon">📝</span> Заяви
       </div>
+      <div class="nav-item" onclick="showPage('add-shift')">
+        <span class="icon">➕</span> Додати зміну
+      </div>
     </div>
 
     <div class="sidebar-footer">
@@ -147,7 +150,7 @@
     <div class="page" id="page-schedule">
       <div class="page-header">
         <h2>Графік змін</h2>
-        <p>Тижневий розклад — Лютий 2025</p>
+        <p>Тижневий розклад — Лютий 2026</p>
       </div>
       <div class="card">
         <div class="card-title">📅 Тижневий календар</div>
@@ -266,6 +269,44 @@
       <div class="card">
         <div class="card-title" id="requests-list-title">📋 Усі заяви</div>
         <div class="requests-list" id="requests-list"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-add-shift">
+      <div class="page-header">
+        <h2>Додати зміну</h2>
+        <p id="add-shift-subtitle">Заявка на нову робочу зміну</p>
+      </div>
+
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-title" id="add-shift-form-title">📋 Нова зміна</div>
+        <div class="form-grid">
+          <div class="form-group" id="add-shift-employee-group" style="display:none">
+            <label>Працівник</label>
+            <select id="add-shift-employee">
+              <option value="">Оберіть...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Дата зміни</label>
+            <input type="date" id="add-shift-date" />
+          </div>
+          <div class="form-group">
+            <label>Час початку</label>
+            <input type="time" id="add-shift-start" />
+          </div>
+          <div class="form-group">
+            <label>Час закінчення</label>
+            <input type="time" id="add-shift-end" />
+          </div>
+        </div>
+        <div id="add-shift-conflict-warn" style="display:none" class="conflict-result error" style="margin-top:0;margin-bottom:16px"></div>
+        <button class="btn-submit" onclick="submitAddShift()">Подати заявку на зміну</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title" id="shift-requests-title">⏳ Заявки на зміни</div>
+        <div class="requests-list" id="shift-requests-list"></div>
       </div>
     </div>
 

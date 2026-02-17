@@ -11,13 +11,14 @@ let state = {
   ],
 
   shifts: [
-    { id: 1, userId: 1, employeeName: 'Анна Коваленко', date: '2025-02-17', start: '08:00', end: '16:00', type: 'anna' },
-    { id: 2, userId: 1, employeeName: 'Анна Коваленко', date: '2025-02-19', start: '12:00', end: '20:00', type: 'anna' },
-    { id: 3, userId: 2, employeeName: 'Каріна Мельник', date: '2025-02-18', start: '08:00', end: '16:00', type: 'karina' },
-    { id: 4, userId: 2, employeeName: 'Каріна Мельник', date: '2025-02-19', start: '14:00', end: '22:00', type: 'karina' },
+    { id: 1, userId: 1, employeeName: 'Анна Коваленко', date: '2026-02-17', start: '08:00', end: '16:00', type: 'anna' },
+    { id: 2, userId: 1, employeeName: 'Анна Коваленко', date: '2026-02-19', start: '12:00', end: '20:00', type: 'anna' },
+    { id: 3, userId: 2, employeeName: 'Каріна Мельник', date: '2026-02-18', start: '08:00', end: '16:00', type: 'karina' },
+    { id: 4, userId: 2, employeeName: 'Каріна Мельник', date: '2026-02-19', start: '14:00', end: '22:00', type: 'karina' },
   ],
 
   requests: [],
+  shiftRequests: [],
 };
 
 function switchAuthTab(tab) {
@@ -81,6 +82,7 @@ function loginAs(user) {
   document.getElementById('app').style.display = 'block';
   updateSidebar();
   populateCheckEmployee();
+  populateAddShiftEmployee();
   renderDashboard();
   showPage('dashboard');
 }
@@ -99,15 +101,16 @@ function showPage(pageId) {
 
   document.getElementById('page-' + pageId).classList.add('active');
 
-  const navMap = { dashboard: 0, schedule: 1, 'my-shifts': 2, conflicts: 3, requests: 4 };
+  const navMap = { dashboard: 0, schedule: 1, 'my-shifts': 2, conflicts: 3, requests: 4, 'add-shift': 5 };
   const items  = document.querySelectorAll('.nav-item');
   if (navMap[pageId] !== undefined) {
     items[navMap[pageId]].classList.add('active');
   }
-  if (pageId === 'schedule')  renderSchedule();
-  if (pageId === 'my-shifts') renderMyShifts();
-  if (pageId === 'conflicts') renderConflicts();
-  if (pageId === 'requests')  renderRequests();
+  if (pageId === 'schedule')   renderSchedule();
+  if (pageId === 'my-shifts')  renderMyShifts();
+  if (pageId === 'conflicts')  renderConflicts();
+  if (pageId === 'requests')   renderRequests();
+  if (pageId === 'add-shift')  renderAddShiftPage();
 }
 
 function updateSidebar() {
@@ -120,7 +123,9 @@ function updateSidebar() {
 function renderDashboard() {
   const conflicts = detectAllConflicts();
   document.getElementById('stat-total').textContent     = state.shifts.length;
-  document.getElementById('stat-requests').textContent  = state.requests.filter(r => r.status === 'pending').length;
+  const pendingAll = state.requests.filter(r => r.status === 'pending').length
+                   + state.shiftRequests.filter(r => r.status === 'pending').length;
+  document.getElementById('stat-requests').textContent  = pendingAll;
   document.getElementById('stat-conflicts').textContent = conflicts.length;
 
   const container = document.getElementById('dashboard-shifts');
@@ -136,7 +141,7 @@ function shiftItemHTML(s, conflicts) {
 
   const badge = hasConflict
     ? `<span class="shift-badge conflict-badge-item">Конфлікт</span>`
-    : s.date === '2025-02-17'
+    : s.date === '2026-02-17'
       ? `<span class="shift-badge active">Сьогодні</span>`
       : `<span class="shift-badge upcoming">Заплановано</span>`;
 
@@ -179,7 +184,7 @@ function renderSchedule() {
     </div>`;
 
     DATES.forEach(d => {
-      const dateStr    = `2025-02-${d}`;
+      const dateStr    = `2026-02-${d}`;
       const shift      = state.shifts.find(s => s.userId === emp.id && s.date === dateStr);
       const isConflict = shift && conflicts.some(c => c.ids.includes(shift.id));
 
@@ -286,6 +291,16 @@ function renderConflicts() {
 
 function populateCheckEmployee() {
   const sel = document.getElementById('check-employee');
+  sel.innerHTML = '<option value="">Оберіть...</option>';
+  state.users
+    .filter(u => u.role === 'employee')
+    .forEach(u => {
+      sel.innerHTML += `<option value="${u.id}">${u.name}</option>`;
+    });
+}
+
+function populateAddShiftEmployee() {
+  const sel = document.getElementById('add-shift-employee');
   sel.innerHTML = '<option value="">Оберіть...</option>';
   state.users
     .filter(u => u.role === 'employee')
@@ -420,10 +435,175 @@ function updateRequestStatus(id, status) {
   renderDashboard();
 }
 
+function renderAddShiftPage() {
+  const u = state.currentUser;
+  const isAdmin = u.role === 'admin';
+
+  document.getElementById('add-shift-subtitle').textContent = isAdmin
+    ? 'Зміна додається одразу після збереження'
+    : 'Заявка піде на розгляд менеджеру';
+  document.getElementById('add-shift-form-title').textContent = isAdmin
+    ? '🗓️ Додати зміну для працівника'
+    : '📋 Подати заявку на зміну';
+  document.getElementById('add-shift-employee-group').style.display = isAdmin ? '' : 'none';
+  document.getElementById('add-shift-conflict-warn').style.display = 'none';
+
+  const shiftTitle = document.getElementById('shift-requests-title');
+  shiftTitle.textContent = isAdmin ? '⏳ Заявки від працівників' : '📋 Мої заявки на зміни';
+
+  renderShiftRequests();
+}
+
+function submitAddShift() {
+  const u      = state.currentUser;
+  const isAdmin = u.role === 'admin';
+  const date   = document.getElementById('add-shift-date').value;
+  const start  = document.getElementById('add-shift-start').value;
+  const end    = document.getElementById('add-shift-end').value;
+  const warn   = document.getElementById('add-shift-conflict-warn');
+
+  let targetUserId, targetUserName, shiftType;
+
+  if (isAdmin) {
+    const empId = parseInt(document.getElementById('add-shift-employee').value);
+    if (!empId) { showToast('Оберіть працівника', 'error'); return; }
+    const emp = state.users.find(u => u.id === empId);
+    targetUserId   = emp.id;
+    targetUserName = emp.name;
+    shiftType      = empId === 1 ? 'anna' : empId === 2 ? 'karina' : 'anna';
+  } else {
+    targetUserId   = u.id;
+    targetUserName = u.name;
+    shiftType      = u.id === 1 ? 'anna' : u.id === 2 ? 'karina' : 'anna';
+  }
+
+  if (!date || !start || !end) { showToast('Заповніть усі поля', 'error'); return; }
+  if (timeToMinutes(start) >= timeToMinutes(end)) {
+    showToast('Час початку має бути раніше за кінець', 'error'); return;
+  }
+
+  const dayShifts = state.shifts.filter(s => s.date === date);
+  const conflicts = dayShifts.filter(s => overlaps(start, end, s.start, s.end));
+
+  if (conflicts.length) {
+    warn.style.display = 'block';
+    warn.innerHTML = `<div class="conflict-result-title">❌ Конфлікт у розкладі!</div>
+      <div class="conflict-result-body">Перетин із: ${conflicts.map(c => `${c.employeeName} (${c.start}–${c.end})`).join(', ')}</div>`;
+    return;
+  }
+  warn.style.display = 'none';
+
+  if (isAdmin) {
+    const newShift = {
+      id:           state.shifts.length + 1,
+      userId:       targetUserId,
+      employeeName: targetUserName,
+      date, start, end,
+      type:         shiftType,
+    };
+    state.shifts.push(newShift);
+    showToast('Зміну додано до розкладу!', 'success');
+    document.getElementById('add-shift-date').value  = '';
+    document.getElementById('add-shift-start').value = '';
+    document.getElementById('add-shift-end').value   = '';
+    document.getElementById('add-shift-employee').value = '';
+    renderDashboard();
+    renderShiftRequests();
+  } else {
+    state.shiftRequests.push({
+      id:           state.shiftRequests.length + 1,
+      userId:       targetUserId,
+      userName:     targetUserName,
+      shiftType,
+      date, start, end,
+      status:       'pending',
+      createdAt:    new Date().toLocaleDateString('uk-UA'),
+    });
+    showToast('Заявку подано! Чекайте підтвердження менеджера.', 'success');
+    document.getElementById('add-shift-date').value  = '';
+    document.getElementById('add-shift-start').value = '';
+    document.getElementById('add-shift-end').value   = '';
+    renderDashboard();
+    renderShiftRequests();
+  }
+}
+
+function renderShiftRequests() {
+  const u       = state.currentUser;
+  const isAdmin = u.role === 'admin';
+  const list    = document.getElementById('shift-requests-list');
+
+  const items = isAdmin
+    ? state.shiftRequests
+    : state.shiftRequests.filter(r => r.userId === u.id);
+
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Заявок немає</div></div>`;
+    return;
+  }
+
+  const statusLabels = { pending: 'На розгляді', approved: 'Схвалено', rejected: 'Відхилено' };
+
+  list.innerHTML = items.slice().reverse().map(r => {
+    const adminBtns = isAdmin && r.status === 'pending'
+      ? `<div class="req-actions">
+          <button class="btn-approve" onclick="approveShiftRequest(${r.id})">Схвалити</button>
+          <button class="btn-reject"  onclick="rejectShiftRequest(${r.id})">Відхилити</button>
+         </div>`
+      : '';
+
+    return `<div class="req-item">
+      <div class="req-type-icon vacation">🗓️</div>
+      <div class="req-info">
+        <div class="req-title">Зміна — ${r.userName}</div>
+        <div class="req-meta">${r.date} · ${r.start}–${r.end} · Подано: ${r.createdAt}</div>
+      </div>
+      <span class="req-status ${r.status}">${statusLabels[r.status]}</span>
+      ${adminBtns}
+    </div>`;
+  }).join('');
+}
+
+function approveShiftRequest(id) {
+  const req = state.shiftRequests.find(r => r.id === id);
+  if (!req) return;
+
+  const dayShifts = state.shifts.filter(s => s.date === req.date);
+  const conflicts = dayShifts.filter(s => overlaps(req.start, req.end, s.start, s.end));
+
+  if (conflicts.length) {
+    showToast('Неможливо схвалити — конфлікт із наявними змінами!', 'error');
+    return;
+  }
+
+  req.status = 'approved';
+  state.shifts.push({
+    id:           state.shifts.length + 1,
+    userId:       req.userId,
+    employeeName: req.userName,
+    date:         req.date,
+    start:        req.start,
+    end:          req.end,
+    type:         req.shiftType,
+  });
+
+  showToast('Заявку схвалено, зміну додано до розкладу!', 'success');
+  renderShiftRequests();
+  renderDashboard();
+}
+
+function rejectShiftRequest(id) {
+  const req = state.shiftRequests.find(r => r.id === id);
+  if (req) req.status = 'rejected';
+  showToast('Заявку відхилено', 'error');
+  renderShiftRequests();
+  renderDashboard();
+}
+
 function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className   = `toast ${type} show`;
   setTimeout(() => t.classList.remove('show'), 3000);
 }
-document.getElementById('check-date').valueAsDate = new Date('2025-02-17');
+document.getElementById('check-date').valueAsDate = new Date('2026-02-17');

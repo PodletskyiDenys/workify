@@ -629,6 +629,12 @@ body::before {
 .empty-icon  { font-size: 48px; margin-bottom: 16px; }
 .empty-text  { font-size: 14px; }
 
+#add-shift-conflict-warn {
+  margin-top: 0;
+  margin-bottom: 16px;
+  display: none;
+}
+
 ::-webkit-scrollbar       { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
