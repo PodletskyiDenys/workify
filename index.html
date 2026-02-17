@@ -1,88 +1,280 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>WorkiFy — Керування робочим часом</title>
-    <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkiFy — Управління змінами</title>
+
+  
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <!-- HEADER -->
-    <header class="header">
-        <div class="container header__container">
-            <h1 class="logo">Worki<span>Fy</span></h1>
-            <nav class="nav">
-                <ul class="nav__list">
-                    <li><a href="#schedule">Графік</a></li>
-                    <li><a href="#calendar">Календар</a></li>
-                    <li><a href="#about">Про додаток</a></li>
-                </ul>
-            </nav>
-            <button class="btn btn--primary" id="openModal">Додати зміну</button>
-        </div>
-    </header>
 
-    <!-- SCHEDULE SECTION -->
-    <section id="schedule" class="schedule section">
-        <div class="container">
-            <h2 class="section__title">Актуальні графіки</h2>
-            <div class="schedule__cards">
-                <div class="card">
-                    <h3>Понеділок</h3>
-                    <p>09:00 — 17:00</p>
-                </div>
-                <div class="card">
-                    <h3>Вівторок</h3>
-                    <p>10:00 — 18:00</p>
-                </div>
-                <div class="card">
-                    <h3>Середа</h3>
-                    <p>09:00 — 17:00</p>
-                </div>
-            </div>
-        </div>
-    </section>
+<div id="auth-screen">
+  <div class="auth-card">
 
-    <!-- CALENDAR SECTION -->
-    <section id="calendar" class="calendar section">
-        <div class="container">
-            <h2 class="section__title">Ваш розклад</h2>
-            <input type="date" id="workDate" class="calendar__input" />
-            <div id="selectedDate" class="calendar__output">Оберіть дату</div>
-        </div>
-    </section>
+    <div class="auth-logo">Work<span>i</span>Fy</div>
+    <div class="auth-subtitle">Система управління змінами</div>
 
-    <section id="about" class="about section">
-        <div class="container">
-            <h2 class="section__title">Про WorkiFy</h2>
-            <p>
-                WorkiFy — ваш інтелектуальний простір для керування робочим часом.
-                Переглядайте графіки, плануйте зміни та контролюйте розклад.
-            </p>
-        </div>
-    </section>
-
-    <!-- MODAL -->
-    <div id="modal" class="modal hidden">
-        <div class="modal__content">
-            <h3>Нова зміна</h3>
-            <label>
-                Дата:
-                <input type="date" id="newDate" />
-            </label>
-            <label>
-                Початок:
-                <input type="time" id="startTime" />
-            </label>
-            <label>
-                Кінець:
-                <input type="time" id="endTime" />
-            </label>
-            <button class="btn btn--success" id="saveChange">Зберегти</button>
-            <button class="btn btn--danger" id="closeModal">Скасувати</button>
-        </div>
+    
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchAuthTab('login')">Вхід</button>
+      <button class="tab-btn" onclick="switchAuthTab('register')">Реєстрація</button>
     </div>
 
-    <script src="script.js"></script>
+    
+    <div id="auth-error" class="auth-error"></div>
+
+    
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Увійти</button>
+    </div>
+
+    
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Ім'я</label>
+        <input type="text" id="reg-name" placeholder="Ваше ім'я" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Роль</label>
+        <select id="reg-role">
+          <option value="employee">Працівник</option>
+          <option value="admin">Менеджер</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" id="reg-password" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="handleRegister()">Зареєструватись</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="app">
+
+  
+  <nav class="sidebar">
+
+    <div class="sidebar-logo">
+      <h1>Work<span>i</span>Fy</h1>
+      <p>Shift Manager</p>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Навігація</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="icon">📊</span> Дашборд
+      </div>
+      <div class="nav-item" onclick="showPage('schedule')">
+        <span class="icon">📅</span> Графік змін
+      </div>
+      <div class="nav-item" onclick="showPage('my-shifts')">
+        <span class="icon">👤</span> Мої зміни
+      </div>
+      <div class="nav-item" onclick="showPage('conflicts')">
+        <span class="icon">⚠️</span> Перевірка конфліктів
+      </div>
+      <div class="nav-item" onclick="showPage('requests')">
+        <span class="icon">📝</span> Заяви
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">А</div>
+        <div>
+          <div class="user-name" id="sidebar-name">Анна</div>
+          <div class="user-role" id="sidebar-role">Працівник</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">Вийти</button>
+    </div>
+
+  </nav>
+
+  
+  <main class="main">
+
+    
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h2>Панель керування</h2>
+        <p>Огляд системи управління змінами WorkiFy</p>
+      </div>
+
+      
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-label">Всього змін</div>
+          <div class="stat-value" id="stat-total">4</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Активних заяв</div>
+          <div class="stat-value" id="stat-requests">0</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Конфліктів</div>
+          <div class="stat-value" id="stat-conflicts">0</div>
+        </div>
+      </div>
+
+      
+      <div class="card">
+        <div class="card-title">📋 Найближчі зміни (всі)</div>
+        <div class="shifts-list" id="dashboard-shifts"></div>
+      </div>
+    </div>
+
+    
+    <div class="page" id="page-schedule">
+      <div class="page-header">
+        <h2>Графік змін</h2>
+        <p>Тижневий розклад — Лютий 2025</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 Тижневий календар</div>
+        <div class="schedule-grid" id="schedule-grid"></div>
+      </div>
+    </div>
+
+    
+    <div class="page" id="page-my-shifts">
+      <div class="page-header">
+        <h2>Мої зміни</h2>
+        <p id="my-shifts-subtitle">Ваш персональний графік</p>
+      </div>
+      <div class="shifts-list" id="my-shifts-list"></div>
+    </div>
+
+    
+    <div class="page" id="page-conflicts">
+      <div class="page-header">
+        <h2>Перевірка конфліктів</h2>
+        <p>Виявлення накладань у графіку змін</p>
+      </div>
+
+      
+      <div class="conflict-panel">
+        <div class="card-title">🔍 Перевірити нову зміну</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Дата зміни</label>
+            <input type="date" id="check-date" />
+          </div>
+          <div class="form-group">
+            <label>Час початку</label>
+            <input type="time" id="check-start" />
+          </div>
+          <div class="form-group">
+            <label>Час закінчення</label>
+            <input type="time" id="check-end" />
+          </div>
+          <div class="form-group">
+            <label>Працівник</label>
+            <select id="check-employee">
+              <option value="">Оберіть...</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-submit" onclick="checkConflict()">Перевірити</button>
+        <div class="conflict-result" id="conflict-result"></div>
+      </div>
+
+      
+      <div class="card">
+        <div class="card-title">⚠️ Виявлені конфлікти в системі</div>
+        <div id="all-conflicts-list"></div>
+      </div>
+    </div>
+
+    
+    <div class="page" id="page-requests">
+      <div class="page-header">
+        <h2>Заяви</h2>
+        <p>Подання та відстеження заяв на відпустку</p>
+      </div>
+
+      
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-title">✍️ Нова заява</div>
+
+        
+        <div class="request-type-grid">
+          <div>
+            <input type="radio" name="req-type" id="type-vacation" class="type-option" value="vacation" checked />
+            <label for="type-vacation" class="type-label">
+              <span class="type-icon">🏖️</span>
+              <span class="type-name">Відпустка</span>
+              <span class="type-desc">Оплачувана</span>
+            </label>
+          </div>
+          <div>
+            <input type="radio" name="req-type" id="type-sick" class="type-option" value="sick" />
+            <label for="type-sick" class="type-label">
+              <span class="type-icon">🤒</span>
+              <span class="type-name">Лікарняний</span>
+              <span class="type-desc">Медична довідка</span>
+            </label>
+          </div>
+          <div>
+            <input type="radio" name="req-type" id="type-dayoff" class="type-option" value="dayoff" />
+            <label for="type-dayoff" class="type-label">
+              <span class="type-icon">☀️</span>
+              <span class="type-name">Вихідний</span>
+              <span class="type-desc">За власний рахунок</span>
+            </label>
+          </div>
+        </div>
+
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Дата початку</label>
+            <input type="date" id="req-date-from" />
+          </div>
+          <div class="form-group">
+            <label>Дата закінчення</label>
+            <input type="date" id="req-date-to" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Причина (необов'язково)</label>
+          <input type="text" id="req-reason" placeholder="Вкажіть причину..." />
+        </div>
+        <button class="btn-submit" onclick="submitRequest()">Подати заяву</button>
+      </div>
+
+      
+      <div class="card">
+        <div class="card-title" id="requests-list-title">📋 Усі заяви</div>
+        <div class="requests-list" id="requests-list"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+
 </body>
 </html>
