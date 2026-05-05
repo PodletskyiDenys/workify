@@ -1,20 +1,7 @@
-/**
- * WorkiFy AI Agent — Function Calling з Google Gemini API
- * Використовує Gemini 2.0 Flash з function calling (tool_use) паттерном.
- * ШІ може викликати реальні функції системи: переглядати розклад,
- * перевіряти конфлікти, аналізувати навантаження, схвалювати заявки.
- */
-
-// ── Storage ───────────────────────────────────────────────────────────────────
 let aiApiKey = localStorage.getItem("workify_gemini_key") || "";
-let chatHistory = []; // multi-turn conversation history
+let chatHistory = [];
 
-// ── Gemini API Config ─────────────────────────────────────────────────────────
-const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-
-// ── Tool Definitions (формат Gemini Function Declarations) ────────────────────
-const AI_TOOLS = [
+const GEMINI_TOOLS = [
   {
     functionDeclarations: [
       {
@@ -30,13 +17,12 @@ const AI_TOOLS = [
                 "Необов'язково: фільтрувати по імені конкретного працівника",
             },
           },
-          required: [],
         },
       },
       {
         name: "detect_conflicts",
         description:
-          "Аналізує розклад і повертає всі конфлікти (накладання змін за датою та часом).",
+          "Аналізує розклад і повертає всі конфлікти — накладання змін за датою та часом.",
         parameters: {
           type: "OBJECT",
           properties: {},
@@ -54,14 +40,13 @@ const AI_TOOLS = [
       {
         name: "add_shift",
         description:
-          "Додає нову зміну до розкладу. Використовуй тільки якщо поточний користувач — менеджер (admin). Перед додаванням перевір конфлікти.",
+          "Додає нову зміну до розкладу. Тільки для менеджера. Перед додаванням перевіряє конфлікти.",
         parameters: {
           type: "OBJECT",
           properties: {
             employee_name: {
               type: "STRING",
-              description:
-                "Повне ім'я працівника (Анна Коваленко або Каріна Мельник)",
+              description: "Повне ім'я або частина імені працівника",
             },
             date: {
               type: "STRING",
@@ -130,11 +115,45 @@ const AI_TOOLS = [
           required: ["date", "start", "end"],
         },
       },
+      {
+        name: "generate_request_text",
+        description:
+          "Генерує професійний та гарно сформульований текст заяви на відпустку, лікарняний або вихідний. Використовуй цей інструмент коли користувач просить написати, скласти або сформулювати заяву.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            request_type: {
+              type: "STRING",
+              description:
+                "Тип заяви: vacation (відпустка), sick (лікарняний), dayoff (вихідний)",
+              enum: ["vacation", "sick", "dayoff"],
+            },
+            date_from: {
+              type: "STRING",
+              description: "Дата початку у форматі YYYY-MM-DD",
+            },
+            date_to: {
+              type: "STRING",
+              description: "Дата закінчення у форматі YYYY-MM-DD",
+            },
+            reason: {
+              type: "STRING",
+              description:
+                "Причина (необов'язково, але бажано для кращої генерації тексту)",
+            },
+            tone: {
+              type: "STRING",
+              description:
+                "Стиль тексту: formal (офіційний), friendly (дружній), brief (стислий)",
+              enum: ["formal", "friendly", "brief"],
+            },
+          },
+          required: ["request_type", "date_from", "date_to"],
+        },
+      },
     ],
   },
 ];
-
-// ── Tool Implementations (реальні функції системи) ────────────────────────────
 
 function tool_get_all_shifts({ employee_name } = {}) {
   let shifts = state.shifts;
@@ -187,7 +206,6 @@ function tool_get_workload_stats() {
     stats[s.employeeName].shifts++;
     stats[s.employeeName].totalHours += hours;
   });
-
   return {
     employees: Object.entries(stats).map(([name, data]) => ({
       name,
@@ -199,14 +217,12 @@ function tool_get_workload_stats() {
 }
 
 function tool_add_shift({ employee_name, date, start, end }) {
-  const isAdmin = state.currentUser?.role === "admin";
-  if (!isAdmin) {
+  if (state.currentUser?.role !== "admin") {
     return {
       success: false,
       error: "Недостатньо прав. Лише менеджер може додавати зміни.",
     };
   }
-
   const emp = state.users.find(
     (u) =>
       u.name.toLowerCase().includes(employee_name.toLowerCase()) &&
@@ -218,7 +234,6 @@ function tool_add_shift({ employee_name, date, start, end }) {
       error: `Працівника "${employee_name}" не знайдено.`,
     };
   }
-
   const dayShifts = state.shifts.filter((s) => s.date === date);
   const conflicting = dayShifts.filter((s) =>
     overlaps(start, end, s.start, s.end),
@@ -229,7 +244,6 @@ function tool_add_shift({ employee_name, date, start, end }) {
       error: `Конфлікт із наявними змінами: ${conflicting.map((c) => `${c.employeeName} (${c.start}–${c.end})`).join(", ")}`,
     };
   }
-
   const shiftType = emp.id === 1 ? "anna" : emp.id === 2 ? "karina" : "anna";
   const newShift = {
     id: state.shifts.length + 1,
@@ -242,7 +256,6 @@ function tool_add_shift({ employee_name, date, start, end }) {
   };
   state.shifts.push(newShift);
   renderDashboard();
-
   return {
     success: true,
     message: `✅ Зміну для ${emp.name} на ${date} (${start}–${end}) успішно додано!`,
@@ -262,7 +275,6 @@ function tool_get_pending_requests() {
       to: r.to,
       reason: r.reason || "",
     }));
-
   const pendingShifts = state.shiftRequests
     .filter((r) => r.status === "pending")
     .map((r) => ({
@@ -273,33 +285,25 @@ function tool_get_pending_requests() {
       start: r.start,
       end: r.end,
     }));
-
   const all = [...pendingLeave, ...pendingShifts];
   if (!all.length) return { requests: [], message: "Активних заявок немає." };
   return { requests: all, total: all.length };
 }
 
 function tool_approve_shift_request({ request_id }) {
-  const isAdmin = state.currentUser?.role === "admin";
-  if (!isAdmin) return { success: false, error: "Недостатньо прав." };
-
+  if (state.currentUser?.role !== "admin")
+    return { success: false, error: "Недостатньо прав." };
   const req = state.shiftRequests.find((r) => r.id === request_id);
   if (!req)
     return { success: false, error: `Заявку #${request_id} не знайдено.` };
   if (req.status !== "pending")
-    return {
-      success: false,
-      error: `Заявку вже оброблено (статус: ${req.status}).`,
-    };
-
+    return { success: false, error: "Заявку вже оброблено." };
   const dayShifts = state.shifts.filter((s) => s.date === req.date);
   const conflicts = dayShifts.filter((s) =>
     overlaps(req.start, req.end, s.start, s.end),
   );
-  if (conflicts.length) {
+  if (conflicts.length)
     return { success: false, error: "Конфлікт із наявними змінами." };
-  }
-
   req.status = "approved";
   state.shifts.push({
     id: state.shifts.length + 1,
@@ -319,13 +323,11 @@ function tool_approve_shift_request({ request_id }) {
 }
 
 function tool_reject_shift_request({ request_id }) {
-  const isAdmin = state.currentUser?.role === "admin";
-  if (!isAdmin) return { success: false, error: "Недостатньо прав." };
-
+  if (state.currentUser?.role !== "admin")
+    return { success: false, error: "Недостатньо прав." };
   const req = state.shiftRequests.find((r) => r.id === request_id);
   if (!req)
     return { success: false, error: `Заявку #${request_id} не знайдено.` };
-
   req.status = "rejected";
   renderShiftRequests();
   return {
@@ -339,7 +341,6 @@ function tool_check_shift_conflict({ date, start, end }) {
   const conflicting = dayShifts.filter((s) =>
     overlaps(start, end, s.start, s.end),
   );
-
   if (!conflicting.length) {
     return {
       has_conflict: false,
@@ -355,9 +356,111 @@ function tool_check_shift_conflict({ date, start, end }) {
   };
 }
 
-// ── Tool Dispatcher ───────────────────────────────────────────────────────────
+function tool_generate_request_text({
+  request_type,
+  date_from,
+  date_to,
+  reason = "",
+  tone = "formal",
+}) {
+  const u = state.currentUser;
+  const userName = u?.name || "Працівник";
 
-function executeToolCall(toolName, toolInput) {
+  const formatDate = (dateStr) => {
+    const [y, m, d] = dateStr.split("-");
+    return `${d}.${m}.${y}`;
+  };
+
+  const from = formatDate(date_from);
+  const to = formatDate(date_to);
+
+  const templates = {
+    vacation: {
+      formal: `Шановний керівництво!
+
+Прошу надати мені щорічну оплачувану відпустку з ${from} по ${to}${reason ? ` у зв'язку з ${reason}` : ""}.
+
+З повагою,
+${userName}
+${new Date().toLocaleDateString("uk-UA")}`,
+
+      friendly: `Доброго дня!
+
+Хотів(ла) б попросити відпустку з ${from} по ${to}${reason ? `. Причина: ${reason}` : ""}. Всі справи буде завершено перед від'їздом.
+
+Дякую за розуміння!
+${userName}`,
+
+      brief: `Прошу відпустку: ${from} — ${to}${reason ? `\nПричина: ${reason}` : ""}
+
+${userName}, ${new Date().toLocaleDateString("uk-UA")}`,
+    },
+
+    sick: {
+      formal: `Шановний керівництво!
+
+Звертаюся до Вас із проханням надати мені лікарняний з ${from} по ${to}${reason ? ` у зв'язку з ${reason}` : " за станом здоров'я"}. Медичну довідку надам найближчим часом.
+
+З повагою,
+${userName}
+${new Date().toLocaleDateString("uk-UA")}`,
+
+      friendly: `Доброго дня!
+
+На жаль, потрібен лікарняний з ${from} по ${to}${reason ? ` (${reason})` : ""}. Довідку принесу як тільки отримаю.
+
+Дякую!
+${userName}`,
+
+      brief: `Лікарняний: ${from} — ${to}${reason ? `\n${reason}` : ""}
+Довідка буде надана.
+
+${userName}, ${new Date().toLocaleDateString("uk-UA")}`,
+    },
+
+    dayoff: {
+      formal: `Шановний керівництво!
+
+Прошу надати мені день відпочинку за власний рахунок з ${from} по ${to}${reason ? ` у зв'язку з ${reason}` : " через сімейні обставини"}.
+
+З повагою,
+${userName}
+${new Date().toLocaleDateString("uk-UA")}`,
+
+      friendly: `Доброго дня!
+
+Чи можна взяти вихідний з ${from} по ${to}${reason ? `? ${reason}` : " через особисті справи"}. Буду вдячний(на) за розуміння.
+
+Дякую!
+${userName}`,
+
+      brief: `Вихідний за власний рахунок: ${from} — ${to}${reason ? `\n${reason}` : ""}
+
+${userName}, ${new Date().toLocaleDateString("uk-UA")}`,
+    },
+  };
+
+  const typeLabels = {
+    vacation: "🏖️ Відпустка",
+    sick: "🤒 Лікарняний",
+    dayoff: "☀️ Вихідний",
+  };
+
+  const text =
+    templates[request_type]?.[tone] || templates[request_type].formal;
+
+  return {
+    success: true,
+    request_type_label: typeLabels[request_type],
+    generated_text: text,
+    dates: { from: date_from, to: date_to },
+    tone_used: tone,
+    message:
+      "✍️ Текст заяви згенеровано! Ви можете скопіювати його або відредагувати за потреби.",
+  };
+}
+
+function executeToolCall(toolName, toolArgs) {
   const tools = {
     get_all_shifts: tool_get_all_shifts,
     detect_conflicts: tool_detect_conflicts,
@@ -367,11 +470,11 @@ function executeToolCall(toolName, toolInput) {
     approve_shift_request: tool_approve_shift_request,
     reject_shift_request: tool_reject_shift_request,
     check_shift_conflict: tool_check_shift_conflict,
+    generate_request_text: tool_generate_request_text,
   };
-
   if (tools[toolName]) {
     try {
-      return tools[toolName](toolInput);
+      return tools[toolName](toolArgs || {});
     } catch (e) {
       return { error: `Помилка виконання: ${e.message}` };
     }
@@ -379,148 +482,102 @@ function executeToolCall(toolName, toolInput) {
   return { error: `Невідомий інструмент: ${toolName}` };
 }
 
-// ── Gemini Agentic Loop ───────────────────────────────────────────────────────
-
-/**
- * Конвертує внутрішню історію чату у формат Gemini.
- * Gemini використовує role: "user" / "model" (не "assistant")
- * та content як масив parts.
- */
-function buildGeminiHistory() {
-  return chatHistory.map((msg) => {
-    // Якщо вже у форматі Gemini (масив parts) — передаємо як є
-    if (Array.isArray(msg.parts)) return msg;
-
-    const role = msg.role === "assistant" ? "model" : msg.role;
-
-    if (typeof msg.content === "string") {
-      return { role, parts: [{ text: msg.content }] };
-    }
-
-    // Gemini tool result format
-    if (Array.isArray(msg.content)) {
-      const parts = msg.content.map((block) => {
-        if (block.type === "tool_result") {
-          return {
-            functionResponse: {
-              name: block.name,
-              response: JSON.parse(block.content),
-            },
-          };
-        }
-        return { text: JSON.stringify(block) };
-      });
-      return { role, parts };
-    }
-
-    return { role, parts: [{ text: JSON.stringify(msg.content) }] };
-  });
-}
-
 async function runAgentLoop(userMessage) {
   const u = state.currentUser;
   const systemInstruction = `Ти — ШІ-асистент системи управління змінами WorkiFy.
 Поточний користувач: ${u.name} (роль: ${u.role === "admin" ? "Менеджер" : "Працівник"}).
-Відповідай українською мовою. Будь конкретним і корисним.
-Використовуй доступні інструменти для отримання реальних даних системи перед відповіддю.
-Якщо користувач просить показати дані — обов'язково виклич відповідний інструмент.
-Якщо роль "employee" — не виконуй дії тільки для менеджерів (add_shift, approve/reject).
-Форматуй відповіді зрозуміло. Використовуй емодзі де доречно.`;
 
-  // Додаємо повідомлення користувача до історії
-  chatHistory.push({
-    role: "user",
-    parts: [{ text: userMessage }],
-  });
+ВАЖЛИВІ ПРАВИЛА:
+1. Відповідай ТІЛЬКИ українською мовою
+2. Будь конкретним і корисним
+3. Використовуй доступні інструменти для отримання реальних даних перед відповіддю
+4. Якщо роль "employee" — не виконуй дії тільки для менеджерів (add_shift, approve/reject)
+5. Форматуй відповіді зрозуміло з емодзі де доречно
+6. Коли користувач просить написати/скласти/сформулювати заяву — ОБОВ'ЯЗКОВО використовуй інструмент generate_request_text
+7. Після генерації тексту заяви — виводь його у форматованому блоці, щоб користувач міг легко скопіювати`;
 
-  // Агентна петля
-  while (true) {
-    const requestBody = {
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: buildGeminiHistory(),
-      tools: AI_TOOLS,
-      tool_config: { function_calling_config: { mode: "AUTO" } },
+  const GEMINI_MODEL = "gemini-2.0-flash";
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${aiApiKey}`;
+  const contents = [
+    ...chatHistory,
+    { role: "user", parts: [{ text: userMessage }] },
+  ];
+
+  let maxIterations = 10;
+  let iterations = 0;
+
+  while (iterations < maxIterations) {
+    iterations++;
+
+    const body = {
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: contents,
+      tools: GEMINI_TOOLS,
       generationConfig: {
-        maxOutputTokens: 1500,
+        maxOutputTokens: 2048,
         temperature: 0.7,
       },
     };
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${aiApiKey}`, {
+    const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const errMsg = err.error?.message || `HTTP ${response.status}`;
-      throw new Error(errMsg);
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
+    const candidate = data.candidates?.[0];
+    if (!candidate) throw new Error("Порожня відповідь від Gemini");
 
-    // Перевіряємо наявність відповіді
-    if (!data.candidates || !data.candidates[0]) {
-      throw new Error("Порожня відповідь від Gemini API");
-    }
+    const parts = candidate.content?.parts || [];
 
-    const candidate = data.candidates[0];
-    const content = candidate.content; // { role: 'model', parts: [...] }
-
-    // Перевіряємо чи є function calls у відповіді
-    const functionCalls = content.parts.filter((p) => p.functionCall);
+    const functionCalls = parts.filter((p) => p.functionCall);
 
     if (functionCalls.length > 0) {
-      // Додаємо відповідь моделі з function calls до історії
-      chatHistory.push(content);
+      contents.push({ role: "model", parts });
 
-      // Виконуємо всі function calls та збираємо результати
-      const functionResponses = [];
+      const responseParts = [];
       for (const part of functionCalls) {
         const { name, args } = part.functionCall;
-
-        // Показуємо виклик інструменту в UI
-        appendToolCallBubble(name, args || {});
-
-        const result = executeToolCall(name, args || {});
-        functionResponses.push({
+        appendToolCallBubble(name, args);
+        const result = executeToolCall(name, args);
+        responseParts.push({
           functionResponse: {
             name,
-            response: result,
+            response: { result },
           },
         });
       }
 
-      // Додаємо результати function calls до історії як повідомлення user (вимога Gemini)
-      chatHistory.push({
-        role: "user",
-        parts: functionResponses,
-      });
-
-      // Продовжуємо петлю
+      contents.push({ role: "user", parts: responseParts });
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       continue;
     }
 
-    // Фінальна текстова відповідь
-    const finalText = content.parts
+    const finalText = parts
       .filter((p) => p.text)
       .map((p) => p.text)
       .join("\n");
 
-    // Зберігаємо фінальну відповідь в історію
-    chatHistory.push(content);
+    chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+    chatHistory.push({ role: "model", parts: [{ text: finalText }] });
 
-    return finalText || "Відповідь отримано, але текст порожній.";
+    if (chatHistory.length > 40) chatHistory = chatHistory.slice(-40);
+
+    return finalText || "...";
   }
-}
 
-// ── UI Functions ──────────────────────────────────────────────────────────────
+  return "Досягнуто ліміт ітерацій. Спробуйте переформулювати запит.";
+}
 
 function renderAiPage() {
   const setupCard = document.getElementById("ai-setup-card");
   const chatWrap = document.getElementById("ai-chat-wrapper");
-
   if (aiApiKey) {
     setupCard.style.display = "none";
     chatWrap.style.display = "flex";
@@ -532,19 +589,14 @@ function renderAiPage() {
 
 function saveApiKey() {
   const key = document.getElementById("api-key-input").value.trim();
-  if (!key) {
-    showToast("Введіть API ключ", "error");
-    return;
-  }
-  // Gemini ключі зазвичай починаються з 'AIza'
-  if (!key.startsWith("AIza") && key.length < 20) {
-    showToast("Невірний формат ключа Gemini", "error");
+  if (!key || key.length < 10) {
+    showToast("Введіть правильний API ключ", "error");
     return;
   }
   aiApiKey = key;
   localStorage.setItem("workify_gemini_key", key);
   chatHistory = [];
-  showToast("Gemini API ключ збережено!", "success");
+  showToast("API ключ збережено!", "success");
   renderAiPage();
 }
 
@@ -553,7 +605,7 @@ function disconnectApi() {
   localStorage.removeItem("workify_gemini_key");
   chatHistory = [];
   renderAiPage();
-  showToast("Відключено від Gemini AI", "error");
+  showToast("Відключено від AI", "error");
 }
 
 function sendQuickMsg(text) {
@@ -575,10 +627,7 @@ async function sendMessage() {
   input.disabled = true;
   sendBtn.disabled = true;
 
-  // Додаємо повідомлення користувача
   appendMessage("user", text);
-
-  // Показуємо індикатор "думає..."
   const thinkingId = appendThinking();
 
   try {
@@ -589,7 +638,7 @@ async function sendMessage() {
     removeThinking(thinkingId);
     appendMessage(
       "assistant",
-      `❌ Помилка: ${err.message}\n\nПеревірте правильність Gemini API ключа (має починатись з AIza) та підключення до інтернету.`,
+      `❌ Помилка: ${err.message}\n\nПеревірте правильність API ключа та підключення до інтернету.`,
     );
   }
 
@@ -601,7 +650,6 @@ async function sendMessage() {
 function appendMessage(role, text) {
   const container = document.getElementById("chat-messages");
   const u = state.currentUser;
-
   const div = document.createElement("div");
   div.className = `chat-msg ${role}`;
 
@@ -610,17 +658,27 @@ function appendMessage(role, text) {
       ? `<div class="msg-avatar">${u?.initials || "Я"}</div>`
       : `<div class="msg-avatar">🤖</div>`;
 
-  // Просте markdown-форматування
-  const formatted = text
+  let formatted = text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br>");
+
+  if (
+    formatted.includes("Шановний") ||
+    formatted.includes("Прошу") ||
+    formatted.includes("З повагою")
+  ) {
+    formatted = formatted.replace(
+      /(Шановний[\s\S]*?(?:\d{2}\.\d{2}\.\d{4}|Дякую!))/g,
+      '<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:10px 0;font-size:13px;line-height:1.8;white-space:pre-wrap;font-family:var(--font-mono)">$1</div>',
+    );
+  }
 
   div.innerHTML = `${avatar}<div class="msg-bubble">${formatted}</div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
-function appendToolCallBubble(toolName, input) {
+function appendToolCallBubble(toolName, args) {
   const container = document.getElementById("chat-messages");
   const toolLabels = {
     get_all_shifts: "📅 get_all_shifts — отримання змін",
@@ -631,17 +689,17 @@ function appendToolCallBubble(toolName, input) {
     approve_shift_request: "✅ approve_shift_request — схвалення заявки",
     reject_shift_request: "❌ reject_shift_request — відхилення заявки",
     check_shift_conflict: "🔍 check_shift_conflict — перевірка конфлікту",
+    generate_request_text: "✍️ generate_request_text — генерація тексту заяви",
   };
-
   const div = document.createElement("div");
   div.className = "chat-msg assistant";
   div.innerHTML = `
     <div class="msg-avatar">🤖</div>
     <div class="msg-bubble">
       <div class="tool-call">
-        <div class="tool-call-label">⚡ Виклик інструменту (Gemini Function Calling)</div>
+        <div class="tool-call-label">⚡ Виклик інструменту</div>
         ${toolLabels[toolName] || toolName}
-        ${Object.keys(input).length ? `<br><span style="color:var(--text-dim);font-size:10px">${JSON.stringify(input)}</span>` : ""}
+        ${args && Object.keys(args).length ? `<br><span style="color:var(--text-dim);font-size:10px">${JSON.stringify(args)}</span>` : ""}
       </div>
     </div>`;
   container.appendChild(div);

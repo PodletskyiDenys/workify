@@ -319,7 +319,6 @@
           </div>
         </div>
 
-        <!-- AI ASSISTANT PAGE -->
         <div class="page" id="page-ai-assistant">
           <div class="page-header">
             <h2>🤖 ШІ-Асистент</h2>
@@ -333,20 +332,20 @@
           <div class="card ai-setup-card" id="ai-setup-card">
             <div class="ai-setup-inner">
               <div class="ai-setup-icon">🔑</div>
-              <div class="ai-setup-title">Підключення до Gemini AI</div>
+              <div class="ai-setup-title">Підключення до Google Gemini AI</div>
               <div class="ai-setup-desc">
-                Введіть ваш Gemini API ключ для активації ШІ-асистента. Ключ
-                зберігається лише у браузері.
+                Введіть ваш Google AI Studio API ключ для активації
+                ШІ-асистента. Ключ зберігається лише у браузері.
               </div>
               <div
                 class="form-group"
                 style="max-width: 480px; margin: 0 auto 16px"
               >
-                <label>Gemini API Key</label>
+                <label>Google AI Studio API Key</label>
                 <input
                   type="password"
                   id="api-key-input"
-                  placeholder="Your key..."
+                  placeholder="AIzaSy..."
                 />
               </div>
               <button class="btn-submit" onclick="saveApiKey()">
@@ -403,6 +402,16 @@
                   onclick="sendQuickMsg('Покажи всі активні заявки')"
                 >
                   📝 Переглянути заявки
+                </div>
+                <div
+                  class="cap-item"
+                  onclick="
+                    sendQuickMsg(
+                      'Напиши мені заяву на відпустку з 10 по 20 лютого через сімейні обставини',
+                    )
+                  "
+                >
+                  ✍️ Написати заяву
                 </div>
               </div>
             </div>
