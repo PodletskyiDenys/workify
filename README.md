@@ -222,4 +222,4 @@ workify/
 
 Для більшості сценаріїв WorkiFy цього більше ніж достатньо.
 
-APIK - AIzaSyDUkMstdfBf-LIC7NlGEj4ymWSSMYfZnFs
+APIK - 5252AIzaSyDUkMstdfBf-LIC7NlGEj4ymWSSMYfZnFs
