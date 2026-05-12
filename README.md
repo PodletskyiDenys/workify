@@ -221,5 +221,3 @@ workify/
 | Токени на запит         | 32,767    |
 
 Для більшості сценаріїв WorkiFy цього більше ніж достатньо.
-
-APIK - 5252AIzaSyDUkMstdfBf-LIC7NlGEj4ymWSSMYfZnFs
