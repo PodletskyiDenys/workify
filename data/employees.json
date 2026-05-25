@@ -1,0 +1,276 @@
+{
+  "employees": [
+    {
+      "id": 1,
+      "name": "Анна Коваленко",
+      "email": "anna@workify.ua",
+      "password": "anna123",
+      "role": "employee",
+      "initials": "АК",
+      "position": "Старший касир",
+      "department": "Торговий зал",
+      "phone": "+38 (097) 123-45-67",
+      "avatar_color": "#4f7cff",
+      "hire_date": "2023-03-15",
+      "hourly_rate": 85,
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "name": "Каріна Мельник",
+      "email": "karina@workify.ua",
+      "password": "karina123",
+      "role": "employee",
+      "initials": "КМ",
+      "position": "Касир",
+      "department": "Торговий зал",
+      "phone": "+38 (063) 987-65-43",
+      "avatar_color": "#00d4aa",
+      "hire_date": "2023-07-01",
+      "hourly_rate": 75,
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "name": "Менеджер Адмін",
+      "email": "admin@workify.ua",
+      "password": "admin123",
+      "role": "admin",
+      "initials": "МН",
+      "position": "Менеджер зміни",
+      "department": "Адміністрація",
+      "phone": "+38 (050) 555-00-11",
+      "avatar_color": "#ffa94d",
+      "hire_date": "2022-01-10",
+      "hourly_rate": 120,
+      "status": "active"
+    },
+    {
+      "id": 4,
+      "name": "Олег Петренко",
+      "email": "oleg@workify.ua",
+      "password": "oleg123",
+      "role": "employee",
+      "initials": "ОП",
+      "position": "Вантажник",
+      "department": "Склад",
+      "phone": "+38 (066) 234-56-78",
+      "avatar_color": "#ff4f6b",
+      "hire_date": "2024-01-20",
+      "hourly_rate": 70,
+      "status": "active"
+    },
+    {
+      "id": 5,
+      "name": "Марина Савченко",
+      "email": "marina@workify.ua",
+      "password": "marina123",
+      "role": "employee",
+      "initials": "МС",
+      "position": "Продавець-консультант",
+      "department": "Торговий зал",
+      "phone": "+38 (073) 345-67-89",
+      "avatar_color": "#7c5fff",
+      "hire_date": "2023-11-05",
+      "hourly_rate": 78,
+      "status": "active"
+    }
+  ],
+  "shifts": [
+    {
+      "id": 1,
+      "userId": 1,
+      "employeeName": "Анна Коваленко",
+      "date": "2026-02-17",
+      "start": "08:00",
+      "end": "16:00",
+      "type": "anna",
+      "note": "Відкриття магазину"
+    },
+    {
+      "id": 2,
+      "userId": 1,
+      "employeeName": "Анна Коваленко",
+      "date": "2026-02-19",
+      "start": "12:00",
+      "end": "20:00",
+      "type": "anna",
+      "note": ""
+    },
+    {
+      "id": 3,
+      "userId": 1,
+      "employeeName": "Анна Коваленко",
+      "date": "2026-02-21",
+      "start": "08:00",
+      "end": "16:00",
+      "type": "anna",
+      "note": ""
+    },
+    {
+      "id": 4,
+      "userId": 2,
+      "employeeName": "Каріна Мельник",
+      "date": "2026-02-18",
+      "start": "08:00",
+      "end": "16:00",
+      "type": "karina",
+      "note": ""
+    },
+    {
+      "id": 5,
+      "userId": 2,
+      "employeeName": "Каріна Мельник",
+      "date": "2026-02-19",
+      "start": "14:00",
+      "end": "22:00",
+      "type": "karina",
+      "note": ""
+    },
+    {
+      "id": 6,
+      "userId": 2,
+      "employeeName": "Каріна Мельник",
+      "date": "2026-02-22",
+      "start": "09:00",
+      "end": "17:00",
+      "type": "karina",
+      "note": ""
+    },
+    {
+      "id": 7,
+      "userId": 4,
+      "employeeName": "Олег Петренко",
+      "date": "2026-02-17",
+      "start": "06:00",
+      "end": "14:00",
+      "type": "oleg",
+      "note": "Розвантаження товару"
+    },
+    {
+      "id": 8,
+      "userId": 4,
+      "employeeName": "Олег Петренко",
+      "date": "2026-02-20",
+      "start": "06:00",
+      "end": "14:00",
+      "type": "oleg",
+      "note": ""
+    },
+    {
+      "id": 9,
+      "userId": 5,
+      "employeeName": "Марина Савченко",
+      "date": "2026-02-18",
+      "start": "10:00",
+      "end": "18:00",
+      "type": "marina",
+      "note": ""
+    },
+    {
+      "id": 10,
+      "userId": 5,
+      "employeeName": "Марина Савченко",
+      "date": "2026-02-20",
+      "start": "10:00",
+      "end": "18:00",
+      "type": "marina",
+      "note": ""
+    },
+    {
+      "id": 11,
+      "userId": 5,
+      "employeeName": "Марина Савченко",
+      "date": "2026-02-23",
+      "start": "10:00",
+      "end": "18:00",
+      "type": "marina",
+      "note": ""
+    }
+  ],
+  "vacations": [
+    {
+      "id": 1,
+      "userId": 4,
+      "employeeName": "Олег Петренко",
+      "type": "vacation",
+      "typeLabel": "🏖️ Відпустка",
+      "from": "2026-02-24",
+      "to": "2026-03-05",
+      "reason": "Щорічна оплачувана відпустка",
+      "status": "approved",
+      "createdAt": "17.02.2026"
+    },
+    {
+      "id": 2,
+      "userId": 2,
+      "employeeName": "Каріна Мельник",
+      "type": "sick",
+      "typeLabel": "🤒 Лікарняний",
+      "from": "2026-02-10",
+      "to": "2026-02-14",
+      "reason": "ГРВІ",
+      "status": "approved",
+      "createdAt": "10.02.2026"
+    },
+    {
+      "id": 3,
+      "userId": 5,
+      "employeeName": "Марина Савченко",
+      "type": "dayoff",
+      "typeLabel": "☀️ Вихідний",
+      "from": "2026-02-25",
+      "to": "2026-02-25",
+      "reason": "Сімейні обставини",
+      "status": "pending",
+      "createdAt": "17.02.2026"
+    }
+  ],
+  "chat_messages": [
+    {
+      "id": 1,
+      "senderId": 1,
+      "senderName": "Анна Коваленко",
+      "senderInitials": "АК",
+      "text": "Привіт! Хтось може поміняти зі мною зміну 21 лютого? У мене лікар о 10 ранку",
+      "timestamp": "2026-02-17T08:30:00",
+      "channel": "general"
+    },
+    {
+      "id": 2,
+      "senderId": 2,
+      "senderName": "Каріна Мельник",
+      "senderInitials": "КМ",
+      "text": "Анно, я можу! В мене 22-го немає нічого. Давай поміняємось?",
+      "timestamp": "2026-02-17T09:15:00",
+      "channel": "general"
+    },
+    {
+      "id": 3,
+      "senderId": 1,
+      "senderName": "Анна Коваленко",
+      "senderInitials": "АК",
+      "text": "Супер! Дякую 🙏 Менеджеру написала, чекаємо підтвердження",
+      "timestamp": "2026-02-17T09:20:00",
+      "channel": "general"
+    },
+    {
+      "id": 4,
+      "senderId": 3,
+      "senderName": "Менеджер Адмін",
+      "senderInitials": "МН",
+      "text": "Добре, підтверджую обмін змінами. Оновив в системі ✅",
+      "timestamp": "2026-02-17T10:05:00",
+      "channel": "general"
+    },
+    {
+      "id": 5,
+      "senderId": 5,
+      "senderName": "Марина Савченко",
+      "senderInitials": "МС",
+      "text": "Нагадую всім — завтра велика поставка товару о 7 ранку. Хто на відкритті — будьте готові!",
+      "timestamp": "2026-02-17T14:00:00",
+      "channel": "general"
+    }
+  ]
+}

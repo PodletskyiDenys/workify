@@ -34,6 +34,15 @@
             <input type="password" id="login-password" placeholder="••••••••" />
           </div>
           <button class="btn-primary" onclick="handleLogin()">Увійти</button>
+          <div class="auth-demo-hint">
+            <span>Демо аккаунти:</span>
+            <button onclick="quickLogin('anna@workify.ua', 'anna123')">
+              👤 Анна
+            </button>
+            <button onclick="quickLogin('admin@workify.ua', 'admin123')">
+              🛡️ Менеджер
+            </button>
+          </div>
         </div>
         <div id="register-form" style="display: none">
           <div class="form-group">
@@ -63,7 +72,21 @@
     </div>
 
     <div id="app">
-      <nav class="sidebar">
+      <header class="mobile-header">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="mobile-logo">Work<span>i</span>Fy</div>
+        <div class="mobile-avatar" id="mobile-avatar">А</div>
+      </header>
+
+      <div
+        class="sidebar-overlay"
+        id="sidebar-overlay"
+        onclick="closeSidebar()"
+      ></div>
+
+      <nav class="sidebar" id="sidebar">
         <div class="sidebar-logo">
           <h1>Work<span>i</span>Fy</h1>
           <p>Shift Manager</p>
@@ -79,14 +102,23 @@
           <div class="nav-item" onclick="showPage('my-shifts')">
             <span class="icon">👤</span> Мої зміни
           </div>
+          <div class="nav-item" onclick="showPage('employees')">
+            <span class="icon">👥</span> Працівники
+          </div>
           <div class="nav-item" onclick="showPage('conflicts')">
-            <span class="icon">⚠️</span> Перевірка конфліктів
+            <span class="icon">⚠️</span> Конфлікти
           </div>
           <div class="nav-item" onclick="showPage('requests')">
             <span class="icon">📝</span> Заяви
           </div>
           <div class="nav-item" onclick="showPage('add-shift')">
             <span class="icon">➕</span> Додати зміну
+          </div>
+          <div class="nav-item chat-nav-item" onclick="showPage('team-chat')">
+            <span class="icon">💬</span> Чат команди
+            <span class="chat-badge" id="chat-badge" style="display: none"
+              >0</span
+            >
           </div>
           <div class="nav-item ai-nav-item" onclick="showPage('ai-assistant')">
             <span class="icon">🤖</span> ШІ-Асистент
@@ -113,21 +145,35 @@
           </div>
           <div class="stats-grid">
             <div class="stat-card blue">
+              <div class="stat-icon">📅</div>
               <div class="stat-label">Всього змін</div>
-              <div class="stat-value" id="stat-total">4</div>
+              <div class="stat-value" id="stat-total">0</div>
             </div>
             <div class="stat-card green">
+              <div class="stat-icon">📝</div>
               <div class="stat-label">Активних заяв</div>
               <div class="stat-value" id="stat-requests">0</div>
             </div>
             <div class="stat-card warn">
+              <div class="stat-icon">⚠️</div>
               <div class="stat-label">Конфліктів</div>
               <div class="stat-value" id="stat-conflicts">0</div>
             </div>
+            <div class="stat-card purple">
+              <div class="stat-icon">👥</div>
+              <div class="stat-label">Працівників</div>
+              <div class="stat-value" id="stat-employees">0</div>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-title">📋 Найближчі зміни (всі)</div>
-            <div class="shifts-list" id="dashboard-shifts"></div>
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-title">📋 Найближчі зміни</div>
+              <div class="shifts-list" id="dashboard-shifts"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">🏖️ Відпустки та лікарняні</div>
+              <div id="dashboard-vacations"></div>
+            </div>
           </div>
         </div>
 
@@ -136,9 +182,11 @@
             <h2>Графік змін</h2>
             <p>Тижневий розклад — Лютий 2026</p>
           </div>
-          <div class="card">
+          <div class="card schedule-card">
             <div class="card-title">📅 Тижневий календар</div>
-            <div class="schedule-grid" id="schedule-grid"></div>
+            <div class="schedule-scroll">
+              <div class="schedule-grid" id="schedule-grid"></div>
+            </div>
           </div>
         </div>
 
@@ -148,6 +196,14 @@
             <p id="my-shifts-subtitle">Ваш персональний графік</p>
           </div>
           <div class="shifts-list" id="my-shifts-list"></div>
+        </div>
+
+        <div class="page" id="page-employees">
+          <div class="page-header">
+            <h2>Працівники</h2>
+            <p>База даних персоналу</p>
+          </div>
+          <div class="employees-grid" id="employees-grid"></div>
         </div>
 
         <div class="page" id="page-conflicts">
@@ -305,7 +361,6 @@
               id="add-shift-conflict-warn"
               style="display: none"
               class="conflict-result error"
-              style="margin-top: 0; margin-bottom: 16px"
             ></div>
             <button class="btn-submit" onclick="submitAddShift()">
               Подати заявку на зміну
@@ -319,23 +374,135 @@
           </div>
         </div>
 
+        <div class="page" id="page-team-chat">
+          <div class="page-header">
+            <h2>💬 Чат команди</h2>
+            <p>Спілкування між працівниками, обмін змінами</p>
+          </div>
+          <div class="chat-layout">
+            <div class="chat-sidebar">
+              <div class="chat-sidebar-title">Канали</div>
+              <div
+                class="chat-channel active"
+                onclick="switchChannel('general')"
+              >
+                <span class="ch-icon">#</span>
+                <span>Загальний</span>
+              </div>
+              <div class="chat-channel" onclick="switchChannel('shifts')">
+                <span class="ch-icon">🔄</span>
+                <span>Обмін змінами</span>
+              </div>
+              <div
+                class="chat-channel"
+                onclick="switchChannel('announcements')"
+              >
+                <span class="ch-icon">📢</span>
+                <span>Оголошення</span>
+              </div>
+              <div class="chat-sidebar-title" style="margin-top: 16px">
+                Онлайн
+              </div>
+              <div class="online-list" id="online-list"></div>
+            </div>
+            <div class="chat-main">
+              <div class="chat-channel-header">
+                <div class="ch-name" id="current-channel-name"># Загальний</div>
+                <div class="ch-desc" id="current-channel-desc">
+                  Загальний чат команди
+                </div>
+              </div>
+              <div class="team-chat-messages" id="team-chat-messages"></div>
+              <div class="team-chat-input-area">
+                <div class="team-chat-input-wrap">
+                  <input
+                    type="text"
+                    id="team-chat-input"
+                    placeholder="Написати повідомлення..."
+                    maxlength="500"
+                    onkeydown="
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        sendTeamMessage();
+                      }
+                    "
+                  />
+                  <button class="chat-send-btn" onclick="sendTeamMessage()">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
+                <div class="chat-quick-actions">
+                  <button
+                    onclick="
+                      insertQuickMsg('Хтось може поміняти зі мною зміну?')
+                    "
+                  >
+                    🔄 Обмін зміною
+                  </button>
+                  <button onclick="insertQuickMsg('Потрібна заміна на ')">
+                    🆘 Потрібна заміна
+                  </button>
+                  <button
+                    onclick="insertQuickMsg('Нагадую про зміну завтра о ')"
+                  >
+                    ⏰ Нагадування
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="page" id="page-ai-assistant">
           <div class="page-header">
             <h2>🤖 ШІ-Асистент</h2>
-            <p>
-              Інтелектуальний помічник для управління змінами — Function Calling
-              Agent
-            </p>
+            <p>Інтелектуальний помічник — Function Calling Agent (Gemini AI)</p>
           </div>
 
-          <!-- API Key Setup -->
-          <div class="card ai-setup-card" id="ai-setup-card">
+          <div class="ai-mode-tabs">
+            <button
+              class="ai-mode-btn active"
+              onclick="switchAiMode('local')"
+              id="btn-local"
+            >
+              🧠 Локальний режим
+            </button>
+            <button
+              class="ai-mode-btn"
+              onclick="switchAiMode('gemini')"
+              id="btn-gemini"
+            >
+              ✨ Gemini AI
+            </button>
+          </div>
+
+          <div id="ai-local-info" class="ai-mode-info">
+            <span class="ai-mode-badge local">🟢 Офлайн режим активний</span>
+            Асистент працює на базі вбудованої бази знань. Не потребує API
+            ключа.
+          </div>
+
+          <div
+            class="card ai-setup-card"
+            id="ai-setup-card"
+            style="display: none"
+          >
             <div class="ai-setup-inner">
               <div class="ai-setup-icon">🔑</div>
               <div class="ai-setup-title">Підключення до Google Gemini AI</div>
               <div class="ai-setup-desc">
-                Введіть ваш Google AI Studio API ключ для активації
-                ШІ-асистента. Ключ зберігається лише у браузері.
+                Введіть ваш Google AI Studio API ключ для активації повноцінного
+                ШІ-асистента.
               </div>
               <div
                 class="form-group"
@@ -354,64 +521,51 @@
             </div>
           </div>
 
-          <!-- Chat Interface -->
           <div
-            class="ai-chat-wrapper"
-            id="ai-chat-wrapper"
+            class="ai-info-banner"
+            id="ai-gemini-banner"
             style="display: none"
           >
-            <div class="ai-info-banner">
-              <div class="ai-info-icon">⚡</div>
-              <div>
-                <strong>Function Calling Agent</strong> — ШІ може викликати
-                функції системи: переглядати розклад, перевіряти конфлікти,
-                додавати зміни, аналізувати навантаження та схвалювати заявки.
-              </div>
-              <button class="btn-disconnect" onclick="disconnectApi()">
-                Відключити
-              </button>
+            <div class="ai-info-icon">⚡</div>
+            <div>
+              <strong>Gemini Function Calling Agent</strong> — ШІ викликає
+              реальні функції системи.
             </div>
+            <button class="btn-disconnect" onclick="disconnectApi()">
+              Відключити
+            </button>
+          </div>
 
+          <div class="ai-chat-wrapper" id="ai-chat-wrapper">
             <div class="ai-capabilities">
               <div class="cap-title">Що може асистент:</div>
               <div class="cap-grid">
                 <div
                   class="cap-item"
-                  onclick="sendQuickMsg('Покажи всі зміни на цьому тижні')"
+                  onclick="sendQuickMsg('Покажи всі зміни')"
                 >
-                  📅 Показати розклад
+                  📅 Розклад
                 </div>
                 <div
                   class="cap-item"
-                  onclick="sendQuickMsg('Перевір конфлікти в розкладі')"
+                  onclick="sendQuickMsg('Перевір конфлікти')"
                 >
-                  ⚠️ Знайти конфлікти
+                  ⚠️ Конфлікти
                 </div>
                 <div
                   class="cap-item"
-                  onclick="
-                    sendQuickMsg(
-                      'Скільки годин відпрацювала кожна людина цього тижня?',
-                    )
-                  "
+                  onclick="sendQuickMsg('Аналіз навантаження')"
                 >
-                  📊 Аналіз навантаження
+                  📊 Навантаження
+                </div>
+                <div class="cap-item" onclick="sendQuickMsg('Покажи заявки')">
+                  📝 Заявки
                 </div>
                 <div
                   class="cap-item"
-                  onclick="sendQuickMsg('Покажи всі активні заявки')"
+                  onclick="sendQuickMsg('Напиши заяву на відпустку')"
                 >
-                  📝 Переглянути заявки
-                </div>
-                <div
-                  class="cap-item"
-                  onclick="
-                    sendQuickMsg(
-                      'Напиши мені заяву на відпустку з 10 по 20 лютого через сімейні обставини',
-                    )
-                  "
-                >
-                  ✍️ Написати заяву
+                  ✍️ Заява
                 </div>
               </div>
             </div>
@@ -420,9 +574,8 @@
               <div class="chat-msg assistant">
                 <div class="msg-avatar">🤖</div>
                 <div class="msg-bubble">
-                  Привіт! Я ШІ-асистент WorkiFy. Я можу допомогти вам керувати
-                  розкладом змін — переглядати графік, виявляти конфлікти,
-                  аналізувати навантаження працівників та багато іншого. Що вас
+                  Привіт! Я ШІ-асистент WorkiFy. Можу допомогти з розкладом,
+                  конфліктами, аналізом навантаження та складанням заяв. Що вас
                   цікавить?
                 </div>
               </div>
@@ -467,6 +620,11 @@
 
     <div class="toast" id="toast"></div>
 
+    <script
+      src="data/employees.json"
+      type="application/json"
+      id="employees-data"
+    ></script>
     <script src="script.js"></script>
     <script src="ai-agent.js"></script>
   </body>
