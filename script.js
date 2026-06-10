@@ -1,6 +1,3 @@
-const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
-const DATES = ["17", "18", "19", "20", "21", "22", "23"];
-
 const MONTHS_SHORT = [
   "Січ",
   "Лют",
@@ -123,7 +120,7 @@ async function loadAppData() {
         id: 1,
         userId: 1,
         employeeName: "Анна Коваленко",
-        date: "2026-02-17",
+        date: "2026-06-17",
         start: "08:00",
         end: "16:00",
         type: "anna",
@@ -132,7 +129,7 @@ async function loadAppData() {
         id: 2,
         userId: 1,
         employeeName: "Анна Коваленко",
-        date: "2026-02-19",
+        date: "2026-06-19",
         start: "12:00",
         end: "20:00",
         type: "anna",
@@ -141,7 +138,7 @@ async function loadAppData() {
         id: 3,
         userId: 2,
         employeeName: "Каріна Мельник",
-        date: "2026-02-18",
+        date: "2026-06-18",
         start: "08:00",
         end: "16:00",
         type: "karina",
@@ -150,7 +147,7 @@ async function loadAppData() {
         id: 4,
         userId: 2,
         employeeName: "Каріна Мельник",
-        date: "2026-02-19",
+        date: "2026-06-19",
         start: "14:00",
         end: "22:00",
         type: "karina",
@@ -159,7 +156,7 @@ async function loadAppData() {
         id: 5,
         userId: 4,
         employeeName: "Олег Петренко",
-        date: "2026-02-17",
+        date: "2026-06-17",
         start: "06:00",
         end: "14:00",
         type: "oleg",
@@ -168,7 +165,7 @@ async function loadAppData() {
         id: 6,
         userId: 5,
         employeeName: "Марина Савченко",
-        date: "2026-02-18",
+        date: "2026-06-18",
         start: "10:00",
         end: "18:00",
         type: "marina",
@@ -180,12 +177,79 @@ async function loadAppData() {
         senderId: 1,
         senderName: "Анна Коваленко",
         senderInitials: "АК",
-        text: "Привіт усім! Хтось може поміняти зміну 21 лютого?",
-        timestamp: "2026-02-17T08:30:00",
+        text: "Привіт усім! Хтось може поміняти зміну 21 червня?",
+        timestamp: "2026-06-17T08:30:00",
         channel: "general",
       },
     ];
   }
+}
+
+function getScheduleWeek() {
+  if (!state.shifts.length) {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+    const days = [],
+      dates = [],
+      fullDates = [];
+    const dayNames = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(dayNames[d.getDay()]);
+      dates.push(String(d.getDate()).padStart(2, "0"));
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      fullDates.push(`${d.getFullYear()}-${mm}-${dd}`);
+    }
+    return {
+      days,
+      dates,
+      fullDates,
+      monthLabel: `${dayNames[1]} ${dates[0]}.${String(monday.getMonth() + 1).padStart(2, "0")} — ${dates[6]}.${String(monday.getMonth() + 1).padStart(2, "0")}`,
+    };
+  }
+
+  const sortedDates = [...new Set(state.shifts.map((s) => s.date))].sort();
+  const firstDate = new Date(sortedDates[0]);
+  const dayOfWeek = firstDate.getDay();
+  const monday = new Date(firstDate);
+  monday.setDate(firstDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+  const days = [],
+    dates = [],
+    fullDates = [];
+  const dayNames = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const monthNames = [
+    "Січень",
+    "Лютий",
+    "Березень",
+    "Квітень",
+    "Травень",
+    "Червень",
+    "Липень",
+    "Серпень",
+    "Вересень",
+    "Жовтень",
+    "Листопад",
+    "Грудень",
+  ];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(dayNames[d.getDay()]);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    dates.push(dd);
+    fullDates.push(`${d.getFullYear()}-${mm}-${dd}`);
+  }
+
+  const monthLabel = monthNames[monday.getMonth()] + " " + monday.getFullYear();
+  return { days, dates, fullDates, monthLabel };
 }
 
 function switchAuthTab(tab) {
@@ -396,9 +460,10 @@ function shiftItemHTML(s, conflicts) {
   const [, mm, dd] = s.date.split("-");
   const month = MONTHS_SHORT[parseInt(mm) - 1];
   const hasConflict = conflicts.some((c) => c.ids.includes(s.id));
+  const todayStr = new Date().toISOString().split("T")[0];
   const badge = hasConflict
     ? `<span class="shift-badge conflict-badge-item">Конфлікт</span>`
-    : s.date === "2026-02-17"
+    : s.date === todayStr
       ? `<span class="shift-badge active">Сьогодні</span>`
       : `<span class="shift-badge upcoming">Заплановано</span>`;
   const type = s.type || "anna";
@@ -424,11 +489,18 @@ function shiftItemHTML(s, conflicts) {
 function renderSchedule() {
   const grid = document.getElementById("schedule-grid");
   const conflicts = detectAllConflicts();
+  const week = getScheduleWeek();
+
+  const subtitle = document.querySelector("#page-schedule .page-header p");
+  if (subtitle) subtitle.textContent = "Тижневий розклад — " + week.monthLabel;
 
   let html = "<div></div>";
-  DAYS.forEach((d, i) => {
-    html += `<div class="sg-header ${DATES[i] === "17" ? "today" : ""}">
-      ${d}<br/><small style="font-size:9px;color:var(--text-dim)">${DATES[i]}/02</small>
+  const todayStr = new Date().toISOString().split("T")[0];
+  week.days.forEach((d, i) => {
+    const mm = week.fullDates[i].split("-")[1];
+    const isToday = week.fullDates[i] === todayStr;
+    html += `<div class="sg-header ${isToday ? "today" : ""}">
+      ${d}<br/><small style="font-size:9px;color:var(--text-dim)">${week.dates[i]}/${mm}</small>
     </div>`;
   });
 
@@ -443,8 +515,7 @@ function renderSchedule() {
       <div class="sg-employee-name">${emp.name.split(" ")[0]}</div>
     </div>`;
 
-    DATES.forEach((d) => {
-      const dateStr = `2026-02-${d}`;
+    week.fullDates.forEach((dateStr) => {
       const shift = state.shifts.find(
         (s) => s.userId === emp.id && s.date === dateStr,
       );
@@ -1068,8 +1139,7 @@ function emptyState(icon, text) {
 document.addEventListener("DOMContentLoaded", async () => {
   await loadAppData();
 
-  const today = new Date("2026-02-17");
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
   ["check-date", "req-date-from", "add-shift-date"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = todayStr;

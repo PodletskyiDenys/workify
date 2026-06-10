@@ -180,7 +180,7 @@
         <div class="page" id="page-schedule">
           <div class="page-header">
             <h2>Графік змін</h2>
-            <p>Тижневий розклад — Лютий 2026</p>
+            <p>Тижневий розклад — Червень 2026</p>
           </div>
           <div class="card schedule-card">
             <div class="card-title">📅 Тижневий календар</div>
@@ -463,6 +463,7 @@
           </div>
         </div>
 
+
         <div class="page" id="page-ai-assistant">
           <div class="page-header">
             <h2>🤖 ШІ-Асистент</h2>
@@ -470,143 +471,106 @@
           </div>
 
           <div class="ai-mode-tabs">
-            <button
-              class="ai-mode-btn active"
-              onclick="switchAiMode('local')"
-              id="btn-local"
-            >
+            <button class="ai-mode-btn active" onclick="switchAiMode('local')" id="btn-local">
               🧠 Локальний режим
             </button>
-            <button
-              class="ai-mode-btn"
-              onclick="switchAiMode('gemini')"
-              id="btn-gemini"
-            >
+            <button class="ai-mode-btn" onclick="switchAiMode('gemini')" id="btn-gemini">
               ✨ Gemini AI
             </button>
           </div>
 
           <div id="ai-local-info" class="ai-mode-info">
             <span class="ai-mode-badge local">🟢 Офлайн режим активний</span>
-            Асистент працює на базі вбудованої бази знань. Не потребує API
-            ключа.
+            Асистент працює на базі вбудованої бази знань. Не потребує API ключа.
           </div>
 
-          <div
-            class="card ai-setup-card"
-            id="ai-setup-card"
-            style="display: none"
-          >
-            <div class="ai-setup-inner">
-              <div class="ai-setup-icon">🔑</div>
-              <div class="ai-setup-title">Підключення до Google Gemini AI</div>
-              <div class="ai-setup-desc">
-                Введіть ваш Google AI Studio API ключ для активації повноцінного
-                ШІ-асистента.
-              </div>
-              <div
-                class="form-group"
-                style="max-width: 480px; margin: 0 auto 16px"
-              >
-                <label>Google AI Studio API Key</label>
-                <input
-                  type="password"
-                  id="api-key-input"
-                  placeholder="AIzaSy..."
-                />
-              </div>
-              <button class="btn-submit" onclick="saveApiKey()">
-                Підключити
-              </button>
-            </div>
-          </div>
-
-          <div
-            class="ai-info-banner"
-            id="ai-gemini-banner"
-            style="display: none"
-          >
-            <div class="ai-info-icon">⚡</div>
-            <div>
-              <strong>Gemini Function Calling Agent</strong> — ШІ викликає
-              реальні функції системи.
-            </div>
-            <button class="btn-disconnect" onclick="disconnectApi()">
-              Відключити
-            </button>
-          </div>
-
-          <div class="ai-chat-wrapper" id="ai-chat-wrapper">
+          <div class="ai-chat-wrapper" id="ai-chat-wrapper-local">
             <div class="ai-capabilities">
               <div class="cap-title">Що може асистент:</div>
               <div class="cap-grid">
-                <div
-                  class="cap-item"
-                  onclick="sendQuickMsg('Покажи всі зміни')"
-                >
-                  📅 Розклад
-                </div>
-                <div
-                  class="cap-item"
-                  onclick="sendQuickMsg('Перевір конфлікти')"
-                >
-                  ⚠️ Конфлікти
-                </div>
-                <div
-                  class="cap-item"
-                  onclick="sendQuickMsg('Аналіз навантаження')"
-                >
-                  📊 Навантаження
-                </div>
-                <div class="cap-item" onclick="sendQuickMsg('Покажи заявки')">
-                  📝 Заявки
-                </div>
-                <div
-                  class="cap-item"
-                  onclick="sendQuickMsg('Напиши заяву на відпустку')"
-                >
-                  ✍️ Заява
-                </div>
+                <div class="cap-item" onclick="sendLocalQuick('Покажи всі зміни')">📅 Розклад</div>
+                <div class="cap-item" onclick="sendLocalQuick('Перевір конфлікти')">⚠️ Конфлікти</div>
+                <div class="cap-item" onclick="sendLocalQuick('Аналіз навантаження')">📊 Навантаження</div>
+                <div class="cap-item" onclick="sendLocalQuick('Покажи заявки')">📝 Заявки</div>
+                <div class="cap-item" onclick="sendLocalQuick('Напиши заяву на відпустку')">✍️ Заява</div>
               </div>
             </div>
 
-            <div class="chat-messages" id="chat-messages">
+            <div class="chat-messages" id="local-chat-messages">
               <div class="chat-msg assistant">
                 <div class="msg-avatar">🤖</div>
                 <div class="msg-bubble">
-                  Привіт! Я ШІ-асистент WorkiFy. Можу допомогти з розкладом,
-                  конфліктами, аналізом навантаження та складанням заяв. Що вас
-                  цікавить?
+                  Привіт! Я ШІ-асистент WorkiFy (локальний режим). Можу допомогти з розкладом, конфліктами, аналізом навантаження та складанням заяв. Що вас цікавить?
                 </div>
               </div>
             </div>
 
             <div class="chat-input-area">
               <div class="chat-input-wrap">
-                <input
-                  type="text"
-                  id="chat-input"
-                  placeholder="Запитайте асистента..."
-                  onkeydown="
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      sendMessage();
-                    }
-                  "
-                />
-                <button
-                  class="chat-send-btn"
-                  onclick="sendMessage()"
-                  id="chat-send-btn"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
+                <input type="text" id="local-chat-input" placeholder="Запитайте асистента..."
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage('local');}" />
+                <button class="chat-send-btn" onclick="sendMessage('local')" id="local-send-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card ai-setup-card" id="ai-setup-card" style="display:none">
+            <div class="ai-setup-inner">
+              <div class="ai-setup-icon">🔑</div>
+              <div class="ai-setup-title">Підключення до Google Gemini AI</div>
+              <div class="ai-setup-desc">
+                Введіть ваш Google AI Studio API ключ для активації повноцінного ШІ-асистента з Function Calling.
+                <br><br>
+                Отримати безкоштовний ключ: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com/apikey</a>
+              </div>
+              <div class="form-group" style="max-width:480px;margin:0 auto 16px">
+                <label>Google AI Studio API Key</label>
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." />
+              </div>
+              <button class="btn-submit" onclick="saveApiKey()">Підключити</button>
+            </div>
+          </div>
+
+          <div class="ai-info-banner" id="ai-gemini-banner" style="display:none">
+            <div class="ai-info-icon">⚡</div>
+            <div>
+              <strong>Gemini Function Calling Agent</strong> — ШІ викликає реальні функції системи. При вичерпанні ліміту автоматично перемкнеться на локальну базу знань.
+            </div>
+            <button class="btn-disconnect" onclick="disconnectApi()">Відключити</button>
+          </div>
+
+          <div class="ai-chat-wrapper" id="ai-chat-wrapper-gemini" style="display:none">
+            <div class="ai-capabilities">
+              <div class="cap-title">Gemini AI може все те саме + розуміє контекст:</div>
+              <div class="cap-grid">
+                <div class="cap-item" onclick="sendGeminiQuick('Покажи всі зміни')">📅 Розклад</div>
+                <div class="cap-item" onclick="sendGeminiQuick('Перевір конфлікти')">⚠️ Конфлікти</div>
+                <div class="cap-item" onclick="sendGeminiQuick('Аналіз навантаження')">📊 Навантаження</div>
+                <div class="cap-item" onclick="sendGeminiQuick('Покажи заявки')">📝 Заявки</div>
+                <div class="cap-item" onclick="sendGeminiQuick('Напиши заяву на відпустку з 01.07 по 14.07')">✍️ Заява</div>
+              </div>
+            </div>
+
+            <div class="chat-messages" id="gemini-chat-messages">
+              <div class="chat-msg assistant">
+                <div class="msg-avatar">🤖</div>
+                <div class="msg-bubble">
+                  Привіт! Я ШІ-асистент WorkiFy на базі <strong>Gemini AI</strong>. Використовую Function Calling для виконання реальних операцій у системі. Що потрібно зробити?
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <div class="chat-input-wrap">
+                <input type="text" id="gemini-chat-input" placeholder="Запитайте Gemini AI..."
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage('gemini');}" />
+                <button class="chat-send-btn" onclick="sendMessage('gemini')" id="gemini-send-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                   </svg>
@@ -615,8 +579,6 @@
             </div>
           </div>
         </div>
-      </main>
-    </div>
 
     <div class="toast" id="toast"></div>
 

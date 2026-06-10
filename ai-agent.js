@@ -1,5 +1,6 @@
 let aiApiKey = localStorage.getItem("workify_gemini_key") || "";
-let chatHistory = [];
+let localChatHistory = [];
+let geminiChatHistory = [];
 let aiResponses = null;
 let currentAiMode = "local";
 
@@ -14,23 +15,31 @@ async function loadAiResponses() {
 }
 
 function renderAiPage() {
+  const localWrapper = document.getElementById("ai-chat-wrapper-local");
+  const geminiWrapper = document.getElementById("ai-chat-wrapper-gemini");
   const setupCard = document.getElementById("ai-setup-card");
   const gemBanner = document.getElementById("ai-gemini-banner");
   const localInfo = document.getElementById("ai-local-info");
 
   if (currentAiMode === "gemini") {
     localInfo.style.display = "none";
+    localWrapper.style.display = "none";
+
     if (aiApiKey) {
       setupCard.style.display = "none";
       gemBanner.style.display = "flex";
+      geminiWrapper.style.display = "flex";
     } else {
       setupCard.style.display = "block";
       gemBanner.style.display = "none";
+      geminiWrapper.style.display = "none";
     }
   } else {
     localInfo.style.display = "flex";
+    localWrapper.style.display = "flex";
     setupCard.style.display = "none";
     gemBanner.style.display = "none";
+    geminiWrapper.style.display = "none";
   }
 }
 
@@ -57,22 +66,54 @@ function saveApiKey() {
   }
   aiApiKey = key;
   localStorage.setItem("workify_gemini_key", key);
-  chatHistory = [];
-  showToast("API ключ збережено!", "success");
+  geminiChatHistory = [];
+  showToast("API ключ збережено! Gemini AI активовано.", "success");
   renderAiPage();
 }
 
 function disconnectApi() {
   aiApiKey = "";
   localStorage.removeItem("workify_gemini_key");
-  chatHistory = [];
+  geminiChatHistory = [];
   renderAiPage();
   showToast("Відключено від Gemini AI", "error");
 }
 
-async function sendMessage() {
-  const input = document.getElementById("chat-input");
-  const sendBtn = document.getElementById("chat-send-btn");
+function getActiveChatContainer() {
+  if (currentAiMode === "gemini" && aiApiKey) {
+    return document.getElementById("gemini-chat-messages");
+  }
+  return document.getElementById("local-chat-messages");
+}
+
+function getActiveInput() {
+  if (currentAiMode === "gemini" && aiApiKey) {
+    return document.getElementById("gemini-chat-input");
+  }
+  return document.getElementById("local-chat-input");
+}
+
+function getActiveSendBtn() {
+  if (currentAiMode === "gemini" && aiApiKey) {
+    return document.getElementById("gemini-send-btn");
+  }
+  return document.getElementById("local-send-btn");
+}
+
+async function sendMessage(mode) {
+  const input =
+    mode === "gemini"
+      ? document.getElementById("gemini-chat-input")
+      : document.getElementById("local-chat-input");
+  const sendBtn =
+    mode === "gemini"
+      ? document.getElementById("gemini-send-btn")
+      : document.getElementById("local-send-btn");
+  const container =
+    mode === "gemini"
+      ? document.getElementById("gemini-chat-messages")
+      : document.getElementById("local-chat-messages");
+
   const text = input.value.trim();
   if (!text) return;
 
@@ -80,24 +121,55 @@ async function sendMessage() {
   input.disabled = true;
   sendBtn.disabled = true;
 
-  appendMessage("user", text);
-  const thinkingId = appendThinking();
+  appendMessageTo(container, "user", text);
+  const thinkingId = appendThinkingTo(container);
 
   try {
     let reply;
-    if (currentAiMode === "gemini" && aiApiKey) {
-      reply = await runGeminiAgent(text);
+    if (mode === "gemini" && aiApiKey) {
+      reply = await runGeminiAgent(text, container);
     } else {
       reply = await runLocalAgent(text);
     }
     removeThinking(thinkingId);
-    appendMessage("assistant", reply);
+    appendMessageTo(container, "assistant", reply);
   } catch (err) {
     removeThinking(thinkingId);
-    appendMessage(
-      "assistant",
-      `❌ Помилка: ${err.message}\n\nПеревірте підключення або спробуйте локальний режим.`,
-    );
+
+    if (mode === "gemini") {
+      const isQuotaError =
+        err.message.includes("429") ||
+        err.message.includes("quota") ||
+        err.message.includes("limit") ||
+        err.message.includes("exhausted") ||
+        err.message.includes("RESOURCE_EXHAUSTED");
+
+      if (isQuotaError) {
+        appendMessageTo(
+          container,
+          "assistant",
+          "⚠️ Ліміт запитів Gemini API вичерпано. Використовую локальну базу знань...",
+        );
+        try {
+          const fallbackReply = await runLocalAgent(text);
+          appendMessageTo(container, "assistant", fallbackReply);
+        } catch (e2) {
+          appendMessageTo(
+            container,
+            "assistant",
+            "❌ Помилка локального режиму: " + e2.message,
+          );
+        }
+      } else {
+        appendMessageTo(
+          container,
+          "assistant",
+          `❌ Помилка Gemini API: ${err.message}\n\nСпробуйте пізніше або використайте локальний режим.`,
+        );
+      }
+    } else {
+      appendMessageTo(container, "assistant", `❌ Помилка: ${err.message}`);
+    }
   }
 
   input.disabled = false;
@@ -105,9 +177,17 @@ async function sendMessage() {
   input.focus();
 }
 
-function sendQuickMsg(text) {
-  document.getElementById("chat-input").value = text;
-  sendMessage();
+function sendQuickMsg(text, mode) {
+  const inputId = mode === "gemini" ? "gemini-chat-input" : "local-chat-input";
+  document.getElementById(inputId).value = text;
+  sendMessage(mode);
+}
+
+function sendLocalQuick(text) {
+  sendQuickMsg(text, "local");
+}
+function sendGeminiQuick(text) {
+  sendQuickMsg(text, "gemini");
 }
 
 async function runLocalAgent(userMessage) {
@@ -135,10 +215,17 @@ async function runLocalAgent(userMessage) {
   if (matchedIntent?.action) {
     const baseReply = pickRandom(matchedIntent.responses);
     const actionResult = executeLocalAction(matchedIntent.action, userMessage);
-    return baseReply + "\n\n" + actionResult;
+    if (actionResult) return baseReply + "\n\n" + actionResult;
+    return baseReply;
   }
 
   if (matchedIntent) {
+    if (matchedIntent.id === "vacation_request") {
+      return handleLocalVacationRequest(lower);
+    }
+    if (matchedIntent.id === "add_shift_request") {
+      return handleLocalAddShiftHint();
+    }
     return pickRandom(matchedIntent.responses);
   }
 
@@ -148,74 +235,112 @@ async function runLocalAgent(userMessage) {
 function executeLocalAction(action, userMessage) {
   switch (action) {
     case "get_all_shifts": {
+      if (!state.shifts?.length)
+        return "📭 Змін не знайдено. Можливо, дані ще не завантажились — спробуйте через секунду.";
       const result = tool_get_all_shifts();
       if (!result.shifts?.length) return "📭 Змін не знайдено.";
-      return (
-        "**📅 Всі зміни:**\n" +
-        result.shifts
-          .map(
-            (s) =>
-              `• ${s.employee} — ${s.date} · ${s.start}–${s.end} (${s.hours}г)`,
-          )
-          .join("\n")
-      );
+      const byDate = {};
+      result.shifts.forEach((s) => {
+        if (!byDate[s.date]) byDate[s.date] = [];
+        byDate[s.date].push(s);
+      });
+      const days = [
+        "Неділя",
+        "Понеділок",
+        "Вівторок",
+        "Середа",
+        "Четвер",
+        "П'ятниця",
+        "Субота",
+      ];
+      let out = `**📅 Розклад змін (${result.total} змін):**\n`;
+      Object.keys(byDate)
+        .sort()
+        .forEach((date) => {
+          const d = new Date(date);
+          const dayName = days[d.getDay()];
+          const [y, m, dd] = date.split("-");
+          out += `\n**${dayName}, ${dd}.${m}:**\n`;
+          byDate[date].forEach((s) => {
+            out += `  • ${s.employee} — ${s.start}-${s.end} (${s.hours} год)\n`;
+          });
+        });
+      return out;
     }
     case "detect_conflicts": {
+      if (!state.shifts?.length)
+        return "📭 Немає змін для перевірки. Завантажте дані спочатку.";
       const result = tool_detect_conflicts();
-      if (!result.conflicts?.length) return "✅ " + result.message;
+      if (!result.conflicts?.length)
+        return "✅ Конфліктів не виявлено! Розклад чистий — жодних накладань між змінами.";
       return (
-        "**⚠️ Виявлені конфлікти:**\n" +
+        "**⚠️ Виявлено " +
+        result.total +
+        " конфліктів:**\n\n" +
         result.conflicts
           .map(
-            (c) =>
-              `• ${c.date}: ${c.employee_a} (${c.time_a}) ↔️ ${c.employee_b} (${c.time_b})`,
+            (c, i) =>
+              `${i + 1}. **${c.date}** — накладання:\n   🔴 ${c.employee_a} (${c.time_a})\n   🔵 ${c.employee_b} (${c.time_b})`,
           )
-          .join("\n")
+          .join("\n\n")
       );
     }
     case "get_workload_stats": {
+      if (!state.shifts?.length) return "📭 Немає даних для аналізу.";
       const result = tool_get_workload_stats();
-      return (
-        "**📊 Статистика навантаження:**\n" +
-        result.employees
-          .map(
-            (e) =>
-              `• ${e.name}: ${e.shifts} змін · ${e.total_hours}г · середня ${e.avg_shift_hours}г/зміна`,
-          )
-          .join("\n")
+      const sorted = result.employees.sort(
+        (a, b) => parseFloat(b.total_hours) - parseFloat(a.total_hours),
       );
+      let out = "**📊 Статистика навантаження:**\n\n";
+      sorted.forEach((e, i) => {
+        const bar = "█".repeat(Math.round(parseFloat(e.total_hours) / 2));
+        out += `${i + 1}. **${e.name}**\n   ${e.shifts} змін · ${e.total_hours} год · ~${e.avg_shift_hours} год/зміна\n   ${bar}\n`;
+      });
+      const totalHours = sorted.reduce(
+        (s, e) => s + parseFloat(e.total_hours),
+        0,
+      );
+      out += `\n**Разом:** ${totalHours.toFixed(1)} годин на ${sorted.length} працівників`;
+      return out;
     }
     case "get_pending_requests": {
       const result = tool_get_pending_requests();
-      if (!result.requests?.length) return "📭 " + result.message;
-      return (
-        "**📝 Активні заявки (" +
-        result.total +
-        "):**\n" +
-        result.requests
-          .map((r) =>
-            r.type === "leave"
-              ? `• ${r.employee}: ${r.request_type} (${r.from} → ${r.to})${r.reason ? " — " + r.reason : ""}`
-              : `• ${r.employee}: зміна ${r.date} ${r.start}–${r.end} (ID: ${r.id})`,
-          )
-          .join("\n")
-      );
+      if (!result.requests?.length)
+        return "📭 Активних заявок немає. Все оброблено!";
+      let out = "**📝 Активні заявки (" + result.total + "):**\n\n";
+      result.requests.forEach((r, i) => {
+        if (r.type === "leave") {
+          out += `${i + 1}. ${r.request_type} — **${r.employee}**\n   📅 ${r.from} → ${r.to}${r.reason ? "\n   💬 " + r.reason : ""}\n`;
+        } else {
+          out += `${i + 1}. 🗓️ Заявка на зміну — **${r.employee}**\n   📅 ${r.date} · ${r.start}-${r.end} (ID: ${r.id})\n`;
+        }
+      });
+      return out;
     }
     case "get_my_shifts": {
       const u = state.currentUser;
-      if (!u) return "Потрібно увійти в систему.";
+      if (!u) return "❌ Потрібно увійти в систему.";
       const myShifts = state.shifts.filter((s) => s.userId === u.id);
       if (!myShifts.length)
-        return `📭 У вас (${u.name}) немає запланованих змін.`;
-      return (
-        `**👤 Ваші зміни (${u.name}):**\n` +
-        myShifts
-          .map(
-            (s) =>
-              `• ${s.date} · ${s.start}–${s.end} (${((timeToMinutes(s.end) - timeToMinutes(s.start)) / 60).toFixed(1)}г)`,
-          )
-          .join("\n")
+        return `📭 У вас (${u.name}) немає запланованих змін на цей тиждень.`;
+      const totalH = myShifts.reduce(
+        (s, sh) => s + (timeToMinutes(sh.end) - timeToMinutes(sh.start)) / 60,
+        0,
       );
+      const days = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+      let out = `**👤 Ваш графік (${u.name}) — ${myShifts.length} змін, ${totalH.toFixed(0)} год:**\n\n`;
+      myShifts
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .forEach((s) => {
+          const d = new Date(s.date);
+          const dayName = days[d.getDay()];
+          const hrs = (
+            (timeToMinutes(s.end) - timeToMinutes(s.start)) /
+            60
+          ).toFixed(1);
+          out += `• **${dayName} ${s.date.split("-")[2]}.${s.date.split("-")[1]}** — ${s.start}-${s.end} (${hrs} год)${s.note ? " · " + s.note : ""}\n`;
+        });
+      return out;
     }
     default:
       return "";
@@ -227,28 +352,28 @@ function parseAndRespond(lower) {
     const shifts = state.shifts.filter((s) => s.userId === 1);
     return (
       `👤 **Анна Коваленко** має ${shifts.length} змін:\n` +
-      shifts.map((s) => `• ${s.date} · ${s.start}–${s.end}`).join("\n")
+      shifts.map((s) => `• ${s.date} · ${s.start}-${s.end}`).join("\n")
     );
   }
   if (lower.includes("каріна") || lower.includes("karina")) {
     const shifts = state.shifts.filter((s) => s.userId === 2);
     return (
       `👤 **Каріна Мельник** має ${shifts.length} змін:\n` +
-      shifts.map((s) => `• ${s.date} · ${s.start}–${s.end}`).join("\n")
+      shifts.map((s) => `• ${s.date} · ${s.start}-${s.end}`).join("\n")
     );
   }
   if (lower.includes("олег") || lower.includes("oleg")) {
     const shifts = state.shifts.filter((s) => s.userId === 4);
     return (
       `👤 **Олег Петренко** має ${shifts.length} змін:\n` +
-      shifts.map((s) => `• ${s.date} · ${s.start}–${s.end}`).join("\n")
+      shifts.map((s) => `• ${s.date} · ${s.start}-${s.end}`).join("\n")
     );
   }
   if (lower.includes("марина") || lower.includes("marina")) {
     const shifts = state.shifts.filter((s) => s.userId === 5);
     return (
       `👤 **Марина Савченко** має ${shifts.length} змін:\n` +
-      shifts.map((s) => `• ${s.date} · ${s.start}–${s.end}`).join("\n")
+      shifts.map((s) => `• ${s.date} · ${s.start}-${s.end}`).join("\n")
     );
   }
   if (lower.match(/\d{4}-\d{2}-\d{2}/)) {
@@ -260,7 +385,7 @@ function parseAndRespond(lower) {
         return (
           `📅 **Зміни на ${dateStr}:**\n` +
           dayShifts
-            .map((s) => `• ${s.employeeName} · ${s.start}–${s.end}`)
+            .map((s) => `• ${s.employeeName} · ${s.start}-${s.end}`)
             .join("\n")
         );
       } else {
@@ -282,6 +407,38 @@ function parseAndRespond(lower) {
   ) {
     return executeLocalAction("get_all_shifts", lower);
   }
+  if (
+    lower.includes("заяв") ||
+    lower.includes("відпустк") ||
+    lower.includes("лікарн") ||
+    lower.includes("вихідн")
+  ) {
+    return handleLocalVacationRequest(lower);
+  }
+  if (lower.includes("дружн") || lower.includes("friendly")) {
+    const result = tool_generate_request_text({
+      request_type: "vacation",
+      date_from: "2026-07-01",
+      date_to: "2026-07-14",
+      reason: "",
+      tone: "friendly",
+    });
+    return `✍️ Заява (дружній стиль):\n\n${result.generated_text}`;
+  }
+  if (
+    lower.includes("коротк") ||
+    lower.includes("brief") ||
+    lower.includes("стисл")
+  ) {
+    const result = tool_generate_request_text({
+      request_type: "vacation",
+      date_from: "2026-07-01",
+      date_to: "2026-07-14",
+      reason: "",
+      tone: "brief",
+    });
+    return `✍️ Заява (стислий стиль):\n\n${result.generated_text}`;
+  }
   const unknownIntent = aiResponses?.intents?.find((i) => i.id === "unknown");
   if (unknownIntent?.responses?.length)
     return pickRandom(unknownIntent.responses);
@@ -290,6 +447,72 @@ function parseAndRespond(lower) {
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function handleLocalVacationRequest(lower) {
+  const u = state.currentUser;
+  const userName = u?.name || "Працівник";
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 7);
+  const weekLater = new Date(today);
+  weekLater.setDate(weekLater.getDate() + 14);
+
+  const fDate = (d) => d.toLocaleDateString("uk-UA");
+  const fISO = (d) => d.toISOString().split("T")[0];
+
+  let requestType = "vacation";
+  let typeLabel = "🏖️ Відпустка";
+  if (
+    lower.includes("лікарн") ||
+    lower.includes("хвор") ||
+    lower.includes("sick")
+  ) {
+    requestType = "sick";
+    typeLabel = "🤒 Лікарняний";
+  } else if (
+    lower.includes("вихід") ||
+    lower.includes("dayoff") ||
+    lower.includes("day off")
+  ) {
+    requestType = "dayoff";
+    typeLabel = "☀️ Вихідний";
+  }
+
+  const dateMatch = lower.match(
+    /(\d{1,2})[.\-/](\d{1,2})(?:[.\-/](\d{2,4}))?/g,
+  );
+  let fromDate = tomorrow;
+  let toDate = weekLater;
+  if (dateMatch && dateMatch.length >= 1) {
+    const parts1 = dateMatch[0].split(/[.\-/]/);
+    fromDate = new Date(2026, parseInt(parts1[1]) - 1, parseInt(parts1[0]));
+    if (dateMatch.length >= 2) {
+      const parts2 = dateMatch[1].split(/[.\-/]/);
+      toDate = new Date(2026, parseInt(parts2[1]) - 1, parseInt(parts2[0]));
+    } else {
+      toDate = new Date(fromDate);
+      toDate.setDate(toDate.getDate() + 7);
+    }
+  }
+
+  const result = tool_generate_request_text({
+    request_type: requestType,
+    date_from: fISO(fromDate),
+    date_to: fISO(toDate),
+    reason: "",
+    tone: "formal",
+  });
+
+  return `✍️ Генерую текст заяви (${typeLabel}):\n\n${result.generated_text}\n\n---\n📋 **Стилі:** Офіційний стиль. Для іншого стилю напишіть: "заява дружня" або "заява коротка".\n📅 **Дати:** ${fDate(fromDate)} - ${fDate(toDate)}. Для інших дат вкажіть їх у запиті.`;
+}
+
+function handleLocalAddShiftHint() {
+  const u = state.currentUser;
+  if (u?.role === "admin") {
+    return "➕ Щоб додати зміну, перейдіть на сторінку **«Додати зміну»** у боковому меню, або вкажіть деталі:\n\n• Ім'я працівника\n• Дата (наприклад: 2026-06-20)\n• Час початку та кінця (наприклад: 08:00-16:00)\n\nАбо використайте **Gemini AI режим** для додавання через текстову команду.";
+  }
+  return "📋 Щоб подати заявку на зміну, перейдіть на сторінку **«Додати зміну»** у боковому меню. Ваша заявка піде на розгляд менеджеру.";
 }
 
 const GEMINI_TOOLS = [
@@ -405,7 +628,7 @@ const GEMINI_TOOLS = [
   },
 ];
 
-async function runGeminiAgent(userMessage) {
+async function runGeminiAgent(userMessage, chatContainer) {
   const u = state.currentUser;
   const systemInstruction = `Ти — ШІ-асистент системи управління змінами WorkiFy.
 Поточний користувач: ${u.name} (роль: ${u.role === "admin" ? "Менеджер" : "Працівник"}).
@@ -420,7 +643,7 @@ async function runGeminiAgent(userMessage) {
 
   const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${aiApiKey}`;
   const contents = [
-    ...chatHistory,
+    ...geminiChatHistory,
     { role: "user", parts: [{ text: userMessage }] },
   ];
 
@@ -456,7 +679,7 @@ async function runGeminiAgent(userMessage) {
       const responseParts = [];
       for (const part of functionCalls) {
         const { name, args } = part.functionCall;
-        appendToolCallBubble(name, args);
+        appendToolCallBubbleTo(chatContainer, name, args);
         const result = executeToolCall(name, args);
         responseParts.push({
           functionResponse: { name, response: { result } },
@@ -471,9 +694,10 @@ async function runGeminiAgent(userMessage) {
       .filter((p) => p.text)
       .map((p) => p.text)
       .join("\n");
-    chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
-    chatHistory.push({ role: "model", parts: [{ text: finalText }] });
-    if (chatHistory.length > 40) chatHistory = chatHistory.slice(-40);
+    geminiChatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+    geminiChatHistory.push({ role: "model", parts: [{ text: finalText }] });
+    if (geminiChatHistory.length > 40)
+      geminiChatHistory = geminiChatHistory.slice(-40);
     return finalText || "...";
   }
   return "Досягнуто ліміт ітерацій. Спробуйте переформулювати запит.";
@@ -510,9 +734,9 @@ function tool_detect_conflicts() {
     conflicts: conflicts.map((c) => ({
       date: c.a.date,
       employee_a: c.a.employeeName,
-      time_a: `${c.a.start}–${c.a.end}`,
+      time_a: `${c.a.start}-${c.a.end}`,
       employee_b: c.b.employeeName,
-      time_b: `${c.b.start}–${c.b.end}`,
+      time_b: `${c.b.start}-${c.b.end}`,
     })),
     total: conflicts.length,
   };
@@ -559,7 +783,7 @@ function tool_add_shift({ employee_name, date, start, end }) {
   if (conflicts.length)
     return {
       success: false,
-      error: `Конфлікт із: ${conflicts.map((c) => `${c.employeeName} (${c.start}–${c.end})`).join(", ")}`,
+      error: `Конфлікт із: ${conflicts.map((c) => `${c.employeeName} (${c.start}-${c.end})`).join(", ")}`,
     };
   const shiftTypes = { 1: "anna", 2: "karina", 4: "oleg", 5: "marina" };
   const newShift = {
@@ -575,7 +799,7 @@ function tool_add_shift({ employee_name, date, start, end }) {
   renderDashboard();
   return {
     success: true,
-    message: `✅ Зміну для ${emp.name} на ${date} (${start}–${end}) успішно додано!`,
+    message: `✅ Зміну для ${emp.name} на ${date} (${start}-${end}) успішно додано!`,
     shift_id: newShift.id,
   };
 }
@@ -662,7 +886,7 @@ function tool_check_shift_conflict({ date, start, end }) {
     has_conflict: true,
     conflicting_shifts: conflicting.map((c) => ({
       employee: c.employeeName,
-      time: `${c.start}–${c.end}`,
+      time: `${c.start}-${c.end}`,
     })),
   };
 }
@@ -683,7 +907,6 @@ function tool_generate_request_text({
   const from = fDate(date_from),
     to = fDate(date_to);
   const reasonText = reason ? ` у зв'язку з ${reason}` : "";
-
   const templates = {
     vacation: {
       formal: `Директору\nвід ${userName}\n\nЗАЯВА\n\nПрошу надати мені щорічну оплачувану відпустку з ${from} по ${to} включно${reasonText}.\n\nЗ повагою,\n${userName}\n${new Date().toLocaleDateString("uk-UA")}`,
@@ -701,7 +924,6 @@ function tool_generate_request_text({
       brief: `Вихідний за власний рахунок: ${from}${from !== to ? " — " + to : ""}${reason ? "\n" + reason : ""}\n\n${userName}, ${new Date().toLocaleDateString("uk-UA")}`,
     },
   };
-
   const typeLabels = {
     vacation: "🏖️ Відпустка",
     sick: "🤒 Лікарняний",
@@ -709,7 +931,6 @@ function tool_generate_request_text({
   };
   const text =
     templates[request_type]?.[tone] || templates[request_type].formal;
-
   return {
     success: true,
     request_type_label: typeLabels[request_type],
@@ -743,21 +964,17 @@ function executeToolCall(toolName, toolArgs) {
   }
 }
 
-function appendMessage(role, text) {
-  const container = document.getElementById("chat-messages");
+function appendMessageTo(container, role, text) {
   const u = state.currentUser;
   const div = document.createElement("div");
   div.className = `chat-msg ${role}`;
-
   const avatar =
     role === "user"
       ? `<div class="msg-avatar">${u?.initials || "Я"}</div>`
       : `<div class="msg-avatar">🤖</div>`;
-
   let formatted = text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\n/g, "<br>");
-
   if (
     text.includes("ЗАЯВА") ||
     text.includes("Шановний") ||
@@ -765,14 +982,12 @@ function appendMessage(role, text) {
   ) {
     formatted = `<div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:8px 0;font-size:13px;line-height:1.9;white-space:pre-wrap;font-family:var(--font-mono)">${text}</div>`;
   }
-
   div.innerHTML = `${avatar}<div class="msg-bubble">${formatted}</div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
-function appendToolCallBubble(toolName, args) {
-  const container = document.getElementById("chat-messages");
+function appendToolCallBubbleTo(container, toolName, args) {
   const toolLabels = {
     get_all_shifts: "📅 get_all_shifts — отримання змін",
     detect_conflicts: "⚠️ detect_conflicts — перевірка конфліктів",
@@ -786,37 +1001,34 @@ function appendToolCallBubble(toolName, args) {
   };
   const div = document.createElement("div");
   div.className = "chat-msg assistant";
-  div.innerHTML = `
-    <div class="msg-avatar">🤖</div>
-    <div class="msg-bubble">
-      <div class="tool-call">
-        <div class="tool-call-label">⚡ Виклик інструменту</div>
-        ${toolLabels[toolName] || toolName}
-        ${args && Object.keys(args).length ? `<br><span style="color:var(--text-dim);font-size:10px">${JSON.stringify(args)}</span>` : ""}
-      </div>
-    </div>`;
+  div.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-bubble"><div class="tool-call"><div class="tool-call-label">⚡ Виклик інструменту</div>${toolLabels[toolName] || toolName}${args && Object.keys(args).length ? `<br><span style="color:var(--text-dim);font-size:10px">${JSON.stringify(args)}</span>` : ""}</div></div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
 
-function appendThinking() {
-  const container = document.getElementById("chat-messages");
+function appendThinkingTo(container) {
   const id = "thinking-" + Date.now();
   const div = document.createElement("div");
   div.id = id;
   div.className = "chat-msg assistant";
-  div.innerHTML = `
-    <div class="msg-avatar">🤖</div>
-    <div class="msg-bubble thinking">
-      Думаю...
-      <div class="typing-dots"><span></span><span></span><span></span></div>
-    </div>`;
+  div.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-bubble thinking">Думаю...<div class="typing-dots"><span></span><span></span><span></span></div></div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
   return id;
 }
+
 function removeThinking(id) {
   document.getElementById(id)?.remove();
+}
+
+function appendMessage(role, text) {
+  appendMessageTo(getActiveChatContainer(), role, text);
+}
+function appendToolCallBubble(name, args) {
+  appendToolCallBubbleTo(getActiveChatContainer(), name, args);
+}
+function appendThinking() {
+  return appendThinkingTo(getActiveChatContainer());
 }
 
 document.addEventListener("DOMContentLoaded", () => {
